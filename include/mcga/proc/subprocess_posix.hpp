@@ -1,3 +1,5 @@
+#pragma once
+
 #include "subprocess.hpp"
 
 #include <sys/types.h>
@@ -11,7 +13,7 @@
 
 #include <system_error>
 
-namespace mcga::proc {
+namespace mcga::proc::internal {
 
 class PosixSubprocessHandler : public Subprocess {
   public:
@@ -93,6 +95,10 @@ class PosixSubprocessHandler : public Subprocess {
     int lastWaitStatus = 0;
 };
 
+} // namespace mcga::proc::internal
+
+namespace mcga::proc {
+
 inline Subprocess* Subprocess::Fork(const std::function<void()>& func) {
     pid_t forkPid = fork();
     if (forkPid < 0) {
@@ -103,7 +109,7 @@ inline Subprocess* Subprocess::Fork(const std::function<void()>& func) {
         func();
         exit(0);
     }
-    return new PosixSubprocessHandler(forkPid);
+    return new internal::PosixSubprocessHandler(forkPid);
 }
 
 }  // namespace mcga::proc
