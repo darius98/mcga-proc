@@ -28,11 +28,16 @@ class Message {
         return Message(messagePayload);
     }
 
-    Message(): payload(nullptr) {
-    }
+    Message() = default;
 
     Message(const Message& other) {
-        copyContent(other);
+        if (other.isInvalid()) {
+            payload = nullptr;
+        } else {
+            auto size = other.getSize();
+            payload = Allocate(size);
+            memcpy(payload, other.payload, size);
+        }
     }
 
     Message(Message&& other) noexcept: payload(other.payload) {
@@ -42,29 +47,23 @@ class Message {
     }
 
     ~Message() {
-        if (payload != nullptr) {
-            free(payload);
-        }
+        delete[] payload;
     }
 
     Message& operator=(const Message& other) {
         if (this == &other) {
             return *this;
         }
-        if (payload != nullptr) {
-            free(payload);
-        }
-        copyContent(other);
-        readHead = sizeof(std::size_t);
+        delete[] payload;
+        new (this) Message(other);
         return *this;
     }
 
     Message& operator=(Message&& other) noexcept {
-        readHead = sizeof(std::size_t);
-        payload = other.payload;
-        if (this != &other) {
-            other.payload = nullptr;
+        if (this == &other) {
+            return *this;
         }
+        new (this) Message(std::move(other));
         return *this;
     }
 
@@ -78,7 +77,8 @@ class Message {
 
     template<class T>
     Message& operator>>(T& obj) {
-        obj = *reinterpret_cast<T*>(payload + readHead);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        obj = *reinterpret_cast<T*>(at(readHead));
         readHead += sizeof(obj);
         return *this;
     }
@@ -98,18 +98,13 @@ class Message {
         return sizeof(std::size_t) + ExpectedContentSizeFromBuffer(payload);
     }
 
-    void copyContent(const Message& other) {
-        if (other.isInvalid()) {
-            payload = nullptr;
-        } else {
-            auto size = other.getSize();
-            payload = Allocate(size);
-            memcpy(payload, other.payload, size);
-        }
+    std::uint8_t* at(std::size_t pos) const {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        return payload + pos;
     }
 
     std::size_t readHead = sizeof(std::size_t);
-    std::uint8_t* payload;
+    std::uint8_t* payload = nullptr;
 
     // helper internal classes
     static std::size_t ExpectedContentSizeFromBuffer(const void* buffer) {
@@ -117,7 +112,7 @@ class Message {
     }
 
     static std::uint8_t* Allocate(std::size_t numBytes) {
-        return static_cast<std::uint8_t*>(malloc(numBytes));
+        return new std::uint8_t[numBytes];
     }
 
     class BytesConsumer {
@@ -144,7 +139,7 @@ class Message {
 
     class BytesCounter : public BytesConsumer {
       public:
-        BytesCounter& addBytes(const void* bytes,
+        BytesCounter& addBytes(const void* /*bytes*/,
                                std::size_t numBytes) override {
             bytesConsumed += numBytes;
             return *this;
@@ -167,6 +162,7 @@ class Message {
         }
 
         Builder& addBytes(const void* bytes, std::size_t numBytes) override {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             memcpy(payloadBuilder + cursor, bytes, numBytes);
             cursor += numBytes;
             return *this;
@@ -189,8 +185,10 @@ template<>
 inline Message& Message::operator>>(std::string& obj) {
     decltype(obj.size()) size;
     (*this) >> size;
-    obj.assign(reinterpret_cast<char*>(payload) + readHead,
-               reinterpret_cast<char*>(payload) + readHead + size);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    obj.assign(reinterpret_cast<char*>(at(readHead)),
+               // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+               reinterpret_cast<char*>(at(readHead + size)));
     readHead += size;
     return *this;
 }
@@ -206,7 +204,7 @@ inline Message::BytesConsumer&
 template<>
 inline Message::BytesConsumer& Message::BytesConsumer::add(const Message& obj) {
     auto contentSize = ExpectedContentSizeFromBuffer(obj.payload);
-    addBytes(obj.payload + sizeof(std::size_t), contentSize);
+    addBytes(obj.at(sizeof(std::size_t)), contentSize);
     return *this;
 }
 

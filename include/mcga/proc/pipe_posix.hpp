@@ -1,7 +1,5 @@
 #pragma once
 
-#include "pipe.hpp"
-
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
