@@ -30,5 +30,5 @@ if (MCGA_proc_tests)
             tests/subprocess_test.cpp
             tests/worker_subprocess_test.cpp
             )
-    target_link_libraries(mcga_proc_test kktest mcga_proc)
+    target_link_libraries(mcga_proc_test mcga_test mcga_proc)
 endif ()

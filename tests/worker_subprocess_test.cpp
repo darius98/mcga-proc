@@ -1,7 +1,7 @@
 #include <chrono>
 #include <thread>
 
-#include <kktest.hpp>
+#include <mcga/test.hpp>
 
 #include <mcga/proc/worker_subprocess.hpp>
 

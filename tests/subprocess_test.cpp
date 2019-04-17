@@ -1,4 +1,4 @@
-#include <kktest.hpp>
+#include <mcga/test.hpp>
 
 #include <csignal>
 

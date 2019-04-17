@@ -1,6 +1,5 @@
-#include <kktest.hpp>
-#include <kktest_ext/matchers/comparison.hpp>
-#include <kktest_ext/matchers/truth.hpp>
+#include <mcga/test.hpp>
+#include <mcga/test_ext/matchers.hpp>
 
 #include <mcga/proc/pipe.hpp>
 
