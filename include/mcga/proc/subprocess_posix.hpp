@@ -1,4 +1,4 @@
-#include <mcga/proc/subprocess.hpp>
+#include "subprocess.hpp"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -10,8 +10,6 @@
 #include <cstring>
 
 #include <system_error>
-
-using namespace std;
 
 namespace mcga::proc {
 
@@ -27,8 +25,8 @@ class PosixSubprocessHandler : public Subprocess {
         int wStatus;
         int ret = waitpid(pid, &wStatus, WNOHANG);
         if (ret < 0) {
-            throw system_error(
-              errno, generic_category(), "PosixSubprocessHandler:waitpid");
+            throw std::system_error(
+              errno, std::generic_category(), "PosixSubprocessHandler:waitpid");
         }
         if (ret == 0) {
             return false;
@@ -47,8 +45,8 @@ class PosixSubprocessHandler : public Subprocess {
             if (errno == ESRCH) {
                 return ALREADY_DEAD;
             }
-            throw system_error(
-              errno, generic_category(), "PosixSubprocessHandler:kill");
+            throw std::system_error(
+              errno, std::generic_category(), "PosixSubprocessHandler:kill");
         }
         return KILLED;
     }
@@ -95,11 +93,11 @@ class PosixSubprocessHandler : public Subprocess {
     int lastWaitStatus = 0;
 };
 
-Subprocess* Subprocess::Fork(const function<void()>& func) {
-    pid_t forkPid = ::fork();
+inline Subprocess* Subprocess::Fork(const std::function<void()>& func) {
+    pid_t forkPid = fork();
     if (forkPid < 0) {
-        throw system_error(
-          errno, generic_category(), "PosixSubprocessHandler:fork");
+        throw std::system_error(
+          errno, std::generic_category(), "PosixSubprocessHandler:fork");
     }
     if (forkPid == 0) {  // child process
         func();

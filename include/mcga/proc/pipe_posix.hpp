@@ -1,4 +1,6 @@
-#include <mcga/proc/pipe.hpp>
+#pragma once
+
+#include "pipe.hpp"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -10,14 +12,12 @@
 
 #include <system_error>
 
-using namespace std;
-
 namespace mcga::proc {
 
 class PosixPipeReader : public PipeReader {
   public:
     explicit PosixPipeReader(const int& inputFD)
-            : inputFD(inputFD), buffer(static_cast<uint8_t*>(malloc(128))),
+            : inputFD(inputFD), buffer(static_cast<std::uint8_t*>(malloc(128))),
               bufferReadHead(0), bufferSize(0), bufferCapacity(128) {
     }
 
@@ -47,7 +47,7 @@ class PosixPipeReader : public PipeReader {
                 return message;
             }
         }
-        return Message::INVALID;
+        return Message();
     }
 
   private:
@@ -58,19 +58,19 @@ class PosixPipeReader : public PipeReader {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 return false;
             }
-            throw system_error(
-              errno, generic_category(), "PipeReader:readBytes()");
+            throw std::system_error(
+              errno, std::generic_category(), "PipeReader:readBytes()");
         }
         if (numBytesRead == 0) {
             return false;
         }
-        resizeBufferToFit((size_t)numBytesRead);
-        memcpy(buffer + bufferSize, block, static_cast<size_t>(numBytesRead));
+        resizeBufferToFit((std::size_t)numBytesRead);
+        memcpy(buffer + bufferSize, block, static_cast<std::size_t>(numBytesRead));
         bufferSize += numBytesRead;
         return true;
     }
 
-    void resizeBufferToFit(size_t extraBytes) {
+    void resizeBufferToFit(std::size_t extraBytes) {
         if (bufferCapacity < bufferSize + extraBytes && bufferReadHead > 0) {
             memcpy(
               buffer, buffer + bufferReadHead, bufferCapacity - bufferReadHead);
@@ -78,7 +78,7 @@ class PosixPipeReader : public PipeReader {
             bufferReadHead = 0;
         }
         while (bufferCapacity < bufferSize + extraBytes) {
-            auto newBuffer = static_cast<uint8_t*>(malloc(2 * bufferCapacity));
+            auto newBuffer = static_cast<std::uint8_t*>(malloc(2 * bufferCapacity));
             memcpy(newBuffer, buffer, bufferSize);
             free(buffer);
             buffer = newBuffer;
@@ -96,10 +96,10 @@ class PosixPipeReader : public PipeReader {
     }
 
     int inputFD;
-    uint8_t* buffer;
-    size_t bufferReadHead;
-    size_t bufferSize;
-    size_t bufferCapacity;
+    std::uint8_t* buffer;
+    std::size_t bufferReadHead;
+    std::size_t bufferSize;
+    std::size_t bufferCapacity;
 };
 
 class PosixPipeWriter : public PipeWriter {
@@ -111,15 +111,15 @@ class PosixPipeWriter : public PipeWriter {
         close(outputFD);
     }
 
-    void sendBytes(uint8_t* bytes, size_t numBytes) override {
-        size_t written = 0;
+    void sendBytes(std::uint8_t* bytes, std::size_t numBytes) override {
+        std::size_t written = 0;
         while (written < numBytes) {
             auto target = bytes + written;
-            size_t remaining = numBytes - written;
+            std::size_t remaining = numBytes - written;
             ssize_t currentWriteBlockSize = write(outputFD, target, remaining);
             if (currentWriteBlockSize < 0) {
-                throw system_error(
-                  errno, generic_category(), "PipeWriter:sendBytes");
+                throw std::system_error(
+                  errno, std::generic_category(), "PipeWriter:sendBytes");
             }
             written += currentWriteBlockSize;
         }
@@ -128,29 +128,29 @@ class PosixPipeWriter : public PipeWriter {
     int outputFD;
 };
 
-pair<PipeReader*, PipeWriter*> createAnonymousPipe() {
+inline std::pair<PipeReader*, PipeWriter*> createAnonymousPipe() {
     int fd[2];
     if (pipe(fd) < 0) {
-        throw system_error(
-          errno, generic_category(), "createAnonymousPipe:pipe");
+        throw std::system_error(
+          errno, std::generic_category(), "createAnonymousPipe:pipe");
     }
     if (fcntl(fd[0], F_SETFL, O_NONBLOCK) < 0) {
-        throw system_error(errno,
-                           generic_category(),
+        throw std::system_error(errno,
+                                std::generic_category(),
                            "createAnonymousPipe:fcntl (set read non-blocking)");
     }
     if (fcntl(fd[1], F_SETFL, O_NONBLOCK) < 0) {
-        throw system_error(errno,
-                           generic_category(),
+        throw std::system_error(errno,
+                           std::generic_category(),
                            "createAnonymousPipe:fcntl (set write non-blocking");
     }
     return {new PosixPipeReader(fd[0]), new PosixPipeWriter(fd[1])};
 }
 
-PipeWriter* PipeWriter::OpenFile(const string& fileName) {
+inline PipeWriter* PipeWriter::OpenFile(const std::string& fileName) {
     int fd = open(fileName.c_str(), O_CREAT | O_WRONLY);
     if (fd < 0) {
-        throw system_error(errno, generic_category(), "open file");
+        throw std::system_error(errno, std::generic_category(), "open file");
     }
     return new PosixPipeWriter(fd);
 }

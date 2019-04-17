@@ -36,3 +36,9 @@ class Subprocess {
 };
 
 }  // namespace mcga::proc
+
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#include "subprocess_posix.hpp"
+#else
+#error "Non-unix systems are not currently supported by mcga::proc."
+#endif

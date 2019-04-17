@@ -3,7 +3,7 @@
 
 #include <mcga/test.hpp>
 
-#include <mcga/proc/worker_subprocess.hpp>
+#include "mcga/proc/worker_subprocess.hpp"
 
 using namespace mcga::test;
 using namespace mcga::proc;

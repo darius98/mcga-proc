@@ -1,7 +1,6 @@
 #pragma once
 
-#include <mcga/proc/message.hpp>
-#include <mcga/proc/pipe.hpp>
-#include <mcga/proc/subprocess.hpp>
-#include <mcga/proc/worker_subprocess.hpp>
-
+#include "proc/message.hpp"
+#include "proc/pipe.hpp"
+#include "proc/subprocess.hpp"
+#include "proc/worker_subprocess.hpp"

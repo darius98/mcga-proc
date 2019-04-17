@@ -4,7 +4,7 @@
 
 #include <thread>
 
-#include <mcga/proc/subprocess.hpp>
+#include "mcga/proc/subprocess.hpp"
 
 using namespace mcga::test;
 using namespace mcga::proc;

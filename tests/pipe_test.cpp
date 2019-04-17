@@ -1,7 +1,7 @@
 #include <mcga/test.hpp>
 #include <mcga/test_ext/matchers.hpp>
 
-#include <mcga/proc/pipe.hpp>
+#include "mcga/proc/pipe.hpp"
 
 using namespace mcga::test;
 using namespace mcga::test::matchers;

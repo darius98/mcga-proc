@@ -7,19 +7,8 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 option(MCGA_proc_tests "Build MCGA Proc tests" OFF)
 
-list(APPEND MCGA_PROC_SRC
-        src/message.cpp
-        src/pipe.cpp
-        src/worker_subprocess.cpp
-        )
-if (UNIX OR APPLE)
-    list(APPEND MCGA_PROC_SRC
-            src/pipe_posix.cpp
-            src/subprocess_posix.cpp
-            )
-endif ()
-add_library(mcga_proc STATIC ${MCGA_PROC_SRC})
-target_include_directories(mcga_proc PUBLIC include)
+add_library(mcga_proc INTERFACE)
+target_include_directories(mcga_proc INTERFACE include)
 
 install(DIRECTORY include DESTINATION .)
 

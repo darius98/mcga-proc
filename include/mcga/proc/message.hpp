@@ -6,8 +6,6 @@ namespace mcga::proc {
 
 class Message {
   public:
-    static const Message INVALID;
-
     template<class... Args>
     static Message Build(const Args... args) {
         BytesCounter counter;
@@ -17,20 +15,66 @@ class Message {
         return messageBuilder.build();
     }
 
-    static Message Read(const void* src, std::size_t maxSize);
+    static Message Read(const void* src, std::size_t maxSize) {
+        if (maxSize < sizeof(size_t)) {
+            return Message();
+        }
+        auto expectedSize = ExpectedContentSizeFromBuffer(src) + sizeof(size_t);
+        if (expectedSize > maxSize) {
+            return Message();
+        }
+        auto messagePayload = Allocate(expectedSize);
+        memcpy(messagePayload, src, expectedSize);
+        return Message(messagePayload);
+    }
 
-    Message();
-    Message(const Message& other);
-    Message(Message&& other) noexcept;
+    Message(): payload(nullptr) {
+    }
 
-    ~Message();
+    Message(const Message& other) {
+        copyContent(other);
+    }
 
-    Message& operator=(const Message& other);
-    Message& operator=(Message&& other) noexcept;
+    Message(Message&& other) noexcept: payload(other.payload) {
+        if (this != &other) {
+            other.payload = nullptr;
+        }
+    }
 
-    bool operator==(const Message& other) const;
+    ~Message() {
+        if (payload != nullptr) {
+            free(payload);
+        }
+    }
 
-    bool isInvalid() const;
+    Message& operator=(const Message& other) {
+        if (this == &other) {
+            return *this;
+        }
+        if (payload != nullptr) {
+            free(payload);
+        }
+        copyContent(other);
+        readHead = sizeof(std::size_t);
+        return *this;
+    }
+
+    Message& operator=(Message&& other) noexcept {
+        readHead = sizeof(std::size_t);
+        payload = other.payload;
+        if (this != &other) {
+            other.payload = nullptr;
+        }
+        return *this;
+    }
+
+    bool operator==(const Message& other) const {
+        return this == &other || (isInvalid() && other.isInvalid());
+    }
+
+    bool isInvalid() const {
+        return payload == nullptr;
+    }
 
     template<class T>
     Message& operator>>(T& obj) {
@@ -47,20 +91,34 @@ class Message {
     }
 
   private:
-    explicit Message(uint8_t* payload) noexcept;
+    explicit Message(uint8_t* payload) noexcept: payload(payload) {
+    }
 
-    std::size_t getSize() const;
+    std::size_t getSize() const {
+        return sizeof(std::size_t) + ExpectedContentSizeFromBuffer(payload);
+    }
 
-    void copyContent(const Message& other);
+    void copyContent(const Message& other) {
+        if (other.isInvalid()) {
+            payload = nullptr;
+        } else {
+            auto size = other.getSize();
+            payload = Allocate(size);
+            memcpy(payload, other.payload, size);
+        }
+    }
 
     std::size_t readHead = sizeof(std::size_t);
     std::uint8_t* payload;
 
     // helper internal classes
+    static std::size_t ExpectedContentSizeFromBuffer(const void* buffer) {
+        return *static_cast<const std::size_t*>(buffer);
+    }
 
-    static std::size_t ExpectedContentSizeFromBuffer(const void* buffer);
-
-    static std::uint8_t* Allocate(std::size_t numBytes);
+    static std::uint8_t* Allocate(std::size_t numBytes) {
+        return static_cast<std::uint8_t*>(malloc(numBytes));
+    }
 
     class BytesConsumer {
       public:
@@ -87,9 +145,14 @@ class Message {
     class BytesCounter : public BytesConsumer {
       public:
         BytesCounter& addBytes(const void* bytes,
-                               std::size_t numBytes) override;
+                               std::size_t numBytes) override {
+            bytesConsumed += numBytes;
+            return *this;
+        }
 
-        std::size_t getNumBytesConsumed() const;
+        std::size_t getNumBytesConsumed() const {
+            return bytesConsumed;
+        }
 
       private:
         std::size_t bytesConsumed = 0;
@@ -97,11 +160,21 @@ class Message {
 
     class Builder : public BytesConsumer {
       public:
-        explicit Builder(std::size_t size);
+        explicit Builder(std::size_t size)
+                : payloadBuilder(Allocate(size + sizeof(std::size_t))) {
+            memcpy(payloadBuilder, &size, sizeof(std::size_t));
+            cursor = sizeof(std::size_t);
+        }
 
-        Builder& addBytes(const void* bytes, std::size_t numBytes) override;
+        Builder& addBytes(const void* bytes, std::size_t numBytes) override {
+            memcpy(payloadBuilder + cursor, bytes, numBytes);
+            cursor += numBytes;
+            return *this;
+        }
 
-        Message build();
+        Message build() {
+            return Message(payloadBuilder);
+        }
 
       private:
         std::uint8_t* payloadBuilder;
@@ -113,12 +186,28 @@ class Message {
 };
 
 template<>
-Message& Message::operator>>(std::string& obj);
+inline Message& Message::operator>>(std::string& obj) {
+    decltype(obj.size()) size;
+    (*this) >> size;
+    obj.assign(reinterpret_cast<char*>(payload) + readHead,
+               reinterpret_cast<char*>(payload) + readHead + size);
+    readHead += size;
+    return *this;
+}
 
 template<>
-Message::BytesConsumer& Message::BytesConsumer::add(const std::string& obj);
+inline Message::BytesConsumer&
+  Message::BytesConsumer::add(const std::string& obj) {
+    add(obj.size());
+    addBytes(obj.c_str(), obj.size());
+    return *this;
+}
 
 template<>
-Message::BytesConsumer& Message::BytesConsumer::add(const Message& obj);
+inline Message::BytesConsumer& Message::BytesConsumer::add(const Message& obj) {
+    auto contentSize = ExpectedContentSizeFromBuffer(obj.payload);
+    addBytes(obj.payload + sizeof(std::size_t), contentSize);
+    return *this;
+}
 
 }  // namespace mcga::proc

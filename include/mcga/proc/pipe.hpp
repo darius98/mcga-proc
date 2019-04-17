@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include <mcga/proc/message.hpp>
+#include "message.hpp"
 
 namespace mcga::proc {
 
@@ -14,10 +14,14 @@ class PipeReader {
     // If maxConsecutiveFailedReadAttempts = -1, we block instead.
     virtual Message getNextMessage(int maxConsecutiveFailedReadAttempts) = 0;
 
-    Message getNextMessage();
+    Message getNextMessage() {
+        return getNextMessage(-1);
+    }
 
   protected:
-    static std::size_t GetMessageSize(const Message& message);
+    static std::size_t GetMessageSize(const Message& message) {
+        return message.getSize();
+    }
 };
 
 class PipeWriter {
@@ -26,7 +30,9 @@ class PipeWriter {
 
     virtual ~PipeWriter() = default;
 
-    void sendMessage(const Message& message);
+    void sendMessage(const Message& message) {
+        sendBytes(message.payload, message.getSize());
+    }
 
     template<class... Args>
     void sendMessage(const Args... args) {
@@ -40,3 +46,9 @@ class PipeWriter {
 std::pair<PipeReader*, PipeWriter*> createAnonymousPipe();
 
 }  // namespace mcga::proc
+
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#include "pipe_posix.hpp"
+#else
+#error "Non-unix systems are not currently supported by mcga::proc."
+#endif

@@ -3,7 +3,7 @@
 #include <mcga/test.hpp>
 #include <mcga/test_ext/matchers.hpp>
 
-#include <mcga/proc/message.hpp>
+#include "mcga/proc/message.hpp"
 
 using namespace mcga::test;
 using namespace mcga::test::matchers;
@@ -59,9 +59,6 @@ TEST_CASE(MessageTest, "Message") {
         expect(message.isInvalid(), isTrue);
     });
 
-    test("Message::INVALID is invalid",
-         [] { expect(Message::INVALID.isInvalid(), isTrue); });
-
     test("Copying", [] {
         int a = 2;
         int b = 4;
@@ -100,8 +97,8 @@ TEST_CASE(MessageTest, "Message") {
     });
 
     test("Messages are only equal if both invalid or same object", [] {
-        Message message1(Message::INVALID);
-        Message message2(Message::INVALID);
+        Message message1;
+        Message message2;
         expect(message1 == message2, isTrue);
 
         auto a = Message::Build(1, 2, 3);
