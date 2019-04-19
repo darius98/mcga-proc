@@ -12,7 +12,8 @@ class WorkerSubprocess : public Subprocess {
     using Work = const std::function<void(PipeWriter*)>&;
 
     WorkerSubprocess(const std::chrono::nanoseconds& timeLimit, Work run)
-            : endTime(std::chrono::high_resolution_clock::now() + timeLimit) {
+            : startTime(std::chrono::high_resolution_clock::now()),
+              timeLimit(timeLimit) {
         auto pipe = createAnonymousPipe();
         subprocess = Subprocess::Fork([&pipe, &run]() {
             delete pipe.first;
@@ -26,7 +27,7 @@ class WorkerSubprocess : public Subprocess {
 
     WorkerSubprocess(WorkerSubprocess&& other) noexcept
             : subprocess(other.subprocess), pipeReader(other.pipeReader),
-              endTime(other.endTime) {
+              startTime(other.startTime), timeLimit(other.timeLimit) {
         other.subprocess = nullptr;
         other.pipeReader = nullptr;
     }
@@ -36,6 +37,10 @@ class WorkerSubprocess : public Subprocess {
     ~WorkerSubprocess() override {
         delete subprocess;
         delete pipeReader;
+    }
+
+    std::chrono::nanoseconds elapsedTime() const {
+        return std::chrono::high_resolution_clock::now() - startTime;
     }
 
     bool isFinished() override {
@@ -64,7 +69,7 @@ class WorkerSubprocess : public Subprocess {
 
     Subprocess::FinishStatus getFinishStatus() override {
         if (!isFinished()) {
-            if (std::chrono::high_resolution_clock::now() <= endTime) {
+            if (elapsedTime() < timeLimit) {
                 return NO_EXIT;
             }
             auto killStatus = kill();
@@ -85,7 +90,8 @@ class WorkerSubprocess : public Subprocess {
   private:
     Subprocess* subprocess;
     PipeReader* pipeReader;
-    std::chrono::high_resolution_clock::time_point endTime;
+    std::chrono::high_resolution_clock::time_point startTime;
+    std::chrono::high_resolution_clock::duration timeLimit;
 };
 
 }  // namespace mcga::proc
