@@ -1,7 +1,7 @@
 #include <cstring>
 
 #include <mcga/test.hpp>
-#include <mcga/matchers.hpp>
+#include <mcga/test_ext/matchers.hpp>
 
 #include "mcga/proc/message.hpp"
 
