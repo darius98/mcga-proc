@@ -1,10 +1,10 @@
+#include <mcga/matchers.hpp>
 #include <mcga/test.hpp>
-#include <mcga/test_ext/matchers.hpp>
 
 #include "mcga/proc/pipe.hpp"
 
 using namespace mcga::test;
-using namespace mcga::test::matchers;
+using namespace mcga::matchers;
 using namespace mcga::proc;
 using namespace std;
 
