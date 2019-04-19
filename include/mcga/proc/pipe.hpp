@@ -44,6 +44,7 @@ class PipeWriter {
 };
 
 std::pair<PipeReader*, PipeWriter*> createAnonymousPipe();
+PipeWriter* createLocalClientSocket(const std::string& pathname);
 
 }  // namespace mcga::proc
 

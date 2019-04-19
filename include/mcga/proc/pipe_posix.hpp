@@ -1,13 +1,17 @@
 #pragma once
 
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 
+#include <stdexcept>
 #include <system_error>
 
 namespace mcga::proc::internal {
@@ -114,7 +118,7 @@ class PosixPipeWriter : public PipeWriter {
     }
 
     ~PosixPipeWriter() override {
-        close(outputFD);
+        ::close(outputFD);
     }
 
     void sendBytes(std::uint8_t* bytes, std::size_t numBytes) override {
@@ -154,10 +158,40 @@ inline std::pair<PipeReader*, PipeWriter*> createAnonymousPipe() {
         throw std::system_error(
           errno,
           std::generic_category(),
-          "createAnonymousPipe:fcntl (set write non-blocking");
+          "createAnonymousPipe:fcntl (set write non-blocking)");
     }
     return {new internal::PosixPipeReader(fd[0]),
             new internal::PosixPipeWriter(fd[1])};
+}
+
+inline PipeWriter* createLocalClientSocket(const std::string& pathname) {
+    sockaddr_un server{};
+    server.sun_family = AF_UNIX;
+    if (sizeof(server.sun_path) < pathname.length() + 1) {
+        throw std::invalid_argument("Cannot connect socket to address: '"
+                                    + pathname + "', address too long!");
+    }
+
+    int socketFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (socketFd < 0) {
+        throw std::system_error(
+          errno, std::generic_category(), "createLocalClientSocket:socket");
+    }
+    if (fcntl(socketFd, F_SETFL, O_NONBLOCK) < 0) {
+        throw std::system_error(
+          errno,
+          std::generic_category(),
+          "createLocalClientSocket:fcntl (set non-blocking)");
+    }
+
+    strcpy(static_cast<char*>(server.sun_path), pathname.c_str());
+
+    if (::connect(socketFd, (sockaddr*)(&server), sizeof(sockaddr_un)) != 0) {
+        ::close(socketFd);
+        throw std::system_error(
+          errno, std::generic_category(), "createLocalClientSocket:connect");
+    }
+    return new internal::PosixPipeWriter(socketFd);
 }
 
 inline PipeWriter* PipeWriter::OpenFile(const std::string& fileName) {
