@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <memory>
 #include <stdexcept>
 #include <system_error>
 
@@ -81,7 +82,7 @@ class PosixPipeReader : public PipeReader {
 
     void resizeBufferToFit(std::size_t extraBytes) {
         if (bufferCapacity < bufferSize + extraBytes && bufferReadHead > 0) {
-            memcpy(
+            std::memmove(
               buffer, buffer + bufferReadHead, bufferCapacity - bufferReadHead);
             bufferSize -= bufferReadHead;
             bufferReadHead = 0;
@@ -121,7 +122,7 @@ class PosixPipeWriter : public PipeWriter {
         ::close(outputFD);
     }
 
-    void sendBytes(std::uint8_t* bytes, std::size_t numBytes) override {
+    void sendBytes(const std::uint8_t* bytes, std::size_t numBytes) override {
         std::size_t written = 0;
         while (written < numBytes) {
             auto target = bytes + written;
@@ -142,7 +143,8 @@ class PosixPipeWriter : public PipeWriter {
 
 namespace mcga::proc {
 
-inline std::pair<PipeReader*, PipeWriter*> createAnonymousPipe() {
+inline std::pair<std::unique_ptr<PipeReader>, std::unique_ptr<PipeWriter>>
+  createAnonymousPipe() {
     int fd[2];
     if (pipe(fd) < 0) {
         throw std::system_error(
@@ -160,11 +162,12 @@ inline std::pair<PipeReader*, PipeWriter*> createAnonymousPipe() {
           std::generic_category(),
           "createAnonymousPipe:fcntl (set write non-blocking)");
     }
-    return {new internal::PosixPipeReader(fd[0]),
-            new internal::PosixPipeWriter(fd[1])};
+    return {std::make_unique<internal::PosixPipeReader>(fd[0]),
+            std::make_unique<internal::PosixPipeWriter>(fd[1])};
 }
 
-inline PipeWriter* createLocalClientSocket(const std::string& pathname) {
+inline std::unique_ptr<PipeWriter>
+  createLocalClientSocket(const std::string& pathname) {
     sockaddr_un server{};
     server.sun_family = AF_UNIX;
     if (sizeof(server.sun_path) < pathname.length() + 1) {
@@ -191,15 +194,16 @@ inline PipeWriter* createLocalClientSocket(const std::string& pathname) {
         throw std::system_error(
           errno, std::generic_category(), "createLocalClientSocket:connect");
     }
-    return new internal::PosixPipeWriter(socketFd);
+    return std::make_unique<internal::PosixPipeWriter>(socketFd);
 }
 
-inline PipeWriter* PipeWriter::OpenFile(const std::string& fileName) {
+inline std::unique_ptr<PipeWriter>
+  PipeWriter::OpenFile(const std::string& fileName) {
     int fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_CLOEXEC);
     if (fd < 0) {
         throw std::system_error(errno, std::generic_category(), "open file");
     }
-    return new internal::PosixPipeWriter(fd);
+    return std::make_unique<internal::PosixPipeWriter>(fd);
 }
 
 }  // namespace mcga::proc

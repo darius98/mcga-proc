@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional>
+#include <memory>
 
 namespace mcga::proc {
 
@@ -16,7 +16,8 @@ class Subprocess {
 
     enum KillResult { KILLED, ALREADY_DEAD };
 
-    static Subprocess* Fork(const std::function<void()>& func);
+    template<class Callable>
+    static std::unique_ptr<Subprocess> Fork(Callable&& callable);
 
     virtual ~Subprocess() = default;
 

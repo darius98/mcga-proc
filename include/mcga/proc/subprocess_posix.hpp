@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <memory>
 #include <system_error>
 
 namespace mcga::proc::internal {
@@ -93,21 +94,22 @@ class PosixSubprocessHandler : public Subprocess {
     int lastWaitStatus = 0;
 };
 
-} // namespace mcga::proc::internal
+}  // namespace mcga::proc::internal
 
 namespace mcga::proc {
 
-inline Subprocess* Subprocess::Fork(const std::function<void()>& func) {
+template<class Callable>
+inline std::unique_ptr<Subprocess> Subprocess::Fork(Callable&& callable) {
     pid_t forkPid = fork();
     if (forkPid < 0) {
         throw std::system_error(
           errno, std::generic_category(), "PosixSubprocessHandler:fork");
     }
     if (forkPid == 0) {  // child process
-        func();
+        std::forward<Callable>(callable)();
         exit(0);
     }
-    return new internal::PosixSubprocessHandler(forkPid);
+    return std::make_unique<internal::PosixSubprocessHandler>(forkPid);
 }
 
 }  // namespace mcga::proc

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -26,12 +27,12 @@ class PipeReader {
 
 class PipeWriter {
   public:
-    static PipeWriter* OpenFile(const std::string& fileName);
+    static std::unique_ptr<PipeWriter> OpenFile(const std::string& fileName);
 
     virtual ~PipeWriter() = default;
 
     void sendMessage(const Message& message) {
-        sendBytes(message.payload, message.getSize());
+        sendBytes(message.payload.get(), message.getSize());
     }
 
     template<class... Args>
@@ -40,11 +41,13 @@ class PipeWriter {
     }
 
   private:
-    virtual void sendBytes(std::uint8_t* bytes, std::size_t numBytes) = 0;
+    virtual void sendBytes(const std::uint8_t* bytes, std::size_t numBytes) = 0;
 };
 
-std::pair<PipeReader*, PipeWriter*> createAnonymousPipe();
-PipeWriter* createLocalClientSocket(const std::string& pathname);
+std::pair<std::unique_ptr<PipeReader>, std::unique_ptr<PipeWriter>>
+  createAnonymousPipe();
+std::unique_ptr<PipeWriter>
+  createLocalClientSocket(const std::string& pathname);
 
 }  // namespace mcga::proc
 

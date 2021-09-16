@@ -1,13 +1,16 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace mcga::proc {
 
 class Message {
+    static constexpr std::size_t prefixSize = alignof(std::max_align_t);
+
   public:
     template<class... Args>
-    static Message Build(const Args... args) {
+    static Message Build(const Args&... args) {
         BytesCounter counter;
         counter.add(args...);
         Builder messageBuilder(counter.getNumBytesConsumed());
@@ -16,11 +19,11 @@ class Message {
     }
 
     static Message Read(const void* src, std::size_t maxSize) {
-        if (maxSize < sizeof(size_t)) {
+        if (maxSize < prefixSize) {
             return Message();
         }
-        auto expectedSize = ExpectedContentSizeFromBuffer(src) + sizeof(size_t);
-        if (expectedSize > maxSize) {
+        auto expectedSize = ExpectedContentSizeFromBuffer(src) + prefixSize;
+        if (maxSize < expectedSize) {
             return Message();
         }
         auto messagePayload = Allocate(expectedSize);
@@ -31,31 +34,27 @@ class Message {
     Message() = default;
 
     Message(const Message& other) {
-        if (other.isInvalid()) {
-            payload = nullptr;
-        } else {
+        if (!other.isInvalid()) {
             auto size = other.getSize();
-            payload = Allocate(size);
-            memcpy(payload, other.payload, size);
+            payload.reset(Allocate(size));
+            memcpy(payload.get(), other.payload.get(), size);
         }
     }
 
-    Message(Message&& other) noexcept: payload(other.payload) {
-        if (this != &other) {
-            other.payload = nullptr;
-        }
-    }
-
-    ~Message() {
-        delete[] payload;
+    Message(Message&& other) noexcept: payload(std::move(other.payload)) {
     }
 
     Message& operator=(const Message& other) {
         if (this == &other) {
             return *this;
         }
-        delete[] payload;
-        new (this) Message(other);
+        readHead = prefixSize;
+        payload.reset();
+        if (!other.isInvalid()) {
+            auto size = other.getSize();
+            payload.reset(Allocate(size));
+            memcpy(payload.get(), other.payload.get(), size);
+        }
         return *this;
     }
 
@@ -63,7 +62,8 @@ class Message {
         if (this == &other) {
             return *this;
         }
-        new (this) Message(std::move(other));
+        readHead = prefixSize;
+        payload = std::move(other.payload);
         return *this;
     }
 
@@ -95,16 +95,16 @@ class Message {
     }
 
     std::size_t getSize() const {
-        return sizeof(std::size_t) + ExpectedContentSizeFromBuffer(payload);
+        return prefixSize + ExpectedContentSizeFromBuffer(payload.get());
     }
 
     std::uint8_t* at(std::size_t pos) const {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        return payload + pos;
+        return &payload[pos];
     }
 
-    std::size_t readHead = sizeof(std::size_t);
-    std::uint8_t* payload = nullptr;
+    std::size_t readHead = prefixSize;
+    std::unique_ptr<std::uint8_t[]> payload;
 
     // helper internal classes
     static std::size_t ExpectedContentSizeFromBuffer(const void* buffer) {
@@ -156,9 +156,10 @@ class Message {
     class Builder : public BytesConsumer {
       public:
         explicit Builder(std::size_t size)
-                : payloadBuilder(Allocate(size + sizeof(std::size_t))) {
+                : payloadBuilder(Allocate(size + prefixSize)) {
+            memset(payloadBuilder, 0, prefixSize);
             memcpy(payloadBuilder, &size, sizeof(std::size_t));
-            cursor = sizeof(std::size_t);
+            cursor = prefixSize;
         }
 
         Builder& addBytes(const void* bytes, std::size_t numBytes) override {
@@ -203,8 +204,8 @@ inline Message::BytesConsumer&
 
 template<>
 inline Message::BytesConsumer& Message::BytesConsumer::add(const Message& obj) {
-    auto contentSize = ExpectedContentSizeFromBuffer(obj.payload);
-    addBytes(obj.at(sizeof(std::size_t)), contentSize);
+    auto contentSize = ExpectedContentSizeFromBuffer(obj.payload.get());
+    addBytes(obj.at(prefixSize), contentSize);
     return *this;
 }
 

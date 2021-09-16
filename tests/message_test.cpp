@@ -121,7 +121,7 @@ TEST_CASE(MessageTest, "Message") {
         size_t messageSize = sizeof(int);
         int messageContent = 42;
         memcpy(buffer, &messageSize, sizeof(size_t));
-        memcpy(static_cast<uint8_t*>(buffer) + sizeof(size_t),
+        memcpy(static_cast<uint8_t*>(buffer) + alignof(std::max_align_t),
                &messageContent,
                sizeof(int));
         Message message = Message::Read(buffer, bufferSize);

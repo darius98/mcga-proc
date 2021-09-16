@@ -13,17 +13,14 @@ using std::this_thread::sleep_for;
 
 TEST_CASE(SubprocessTest, "Subprocess") {
     group("Fork into process doing nothing, after 50ms", [] {
-        Subprocess* proc = nullptr;
+        std::unique_ptr<Subprocess> proc;
 
         setUp([&proc] {
             proc = Subprocess::Fork([] {});
             sleep_for(50ms);
         });
 
-        tearDown([&proc] {
-            delete proc;
-            proc = nullptr;
-        });
+        tearDown([&proc] { proc.reset(); });
 
         test("isFinished() == true", [&] { expect(proc->isFinished()); });
 
@@ -42,17 +39,14 @@ TEST_CASE(SubprocessTest, "Subprocess") {
     });
 
     group("Fork into process exiting with code 17, after 50ms", [] {
-        Subprocess* proc = nullptr;
+        std::unique_ptr<Subprocess> proc;
 
         setUp([&proc] {
             proc = Subprocess::Fork([] { exit(17); });
             sleep_for(50ms);
         });
 
-        tearDown([&proc] {
-            delete proc;
-            proc = nullptr;
-        });
+        tearDown([&proc] { proc.reset(); });
 
         test("isFinished() == true", [&] { expect(proc->isFinished()); });
 
@@ -72,17 +66,14 @@ TEST_CASE(SubprocessTest, "Subprocess") {
     });
 
     group("Fork into KBS SIGINT process, after 50ms", [] {
-        Subprocess* proc = nullptr;
+        std::unique_ptr<Subprocess> proc;
 
         setUp([&proc] {
             proc = Subprocess::Fork([] { raise(SIGINT); });
             sleep_for(50ms);
         });
 
-        tearDown([&proc] {
-            delete proc;
-            proc = nullptr;
-        });
+        tearDown([&proc] { proc.reset(); });
 
         test("isFinished() == true", [&] { expect(proc->isFinished()); });
 
@@ -102,7 +93,7 @@ TEST_CASE(SubprocessTest, "Subprocess") {
     });
 
     group("Fork into infinite spin process, after 50ms", [&] {
-        Subprocess* proc = nullptr;
+        std::unique_ptr<Subprocess> proc;
 
         setUp([&proc] {
             proc = Subprocess::Fork([] {
@@ -116,8 +107,7 @@ TEST_CASE(SubprocessTest, "Subprocess") {
 
         tearDown([&proc] {
             proc->kill();
-            delete proc;
-            proc = nullptr;
+            proc.reset();
         });
 
         test("isFinished() == false", [&] { expect(!proc->isFinished()); });

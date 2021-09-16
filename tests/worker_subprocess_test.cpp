@@ -13,19 +13,17 @@ using std::this_thread::sleep_for;
 
 TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
     group("Send a message, then die", [] {
-        WorkerSubprocess* proc = nullptr;
+        std::unique_ptr<WorkerSubprocess> proc;
 
         setUp([&] {
-            proc = new WorkerSubprocess(50ms, [](PipeWriter* writer) {
-                writer->sendMessage(2, 0, 1, 9);
-            });
+            proc = std::make_unique<WorkerSubprocess>(
+              50ms, [](std::unique_ptr<PipeWriter> writer) {
+                  writer->sendMessage(2, 0, 1, 9);
+              });
             sleep_for(50ms);
         });
 
-        tearDown([&] {
-            delete proc;
-            proc = nullptr;
-        });
+        tearDown([&] { proc.reset(); });
 
         test("isFinished() == true", [&] { expect(proc->isFinished()); });
 
@@ -53,36 +51,34 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
     });
 
     group("Do nothing and die", [] {
-        WorkerSubprocess* proc = nullptr;
+        std::unique_ptr<WorkerSubprocess> proc;
 
-        tearDown([&] {
-            delete proc;
-            proc = nullptr;
-        });
+        // TODO: Add cleanup() functionality to mcga::test. This shouldn't be a
+        //  group!
+        tearDown([&] { proc.reset(); });
 
         test("getNextMessage(32) is invalid", [&] {
-            proc = new WorkerSubprocess(50ms, [](PipeWriter*) {});
+            proc = std::make_unique<WorkerSubprocess>(
+              50ms, [](std::unique_ptr<PipeWriter>) {});
             sleep_for(50ms);
             expect(proc->getNextMessage(32).isInvalid());
         });
     });
 
     group("Timeout", [] {
-        WorkerSubprocess* proc = nullptr;
+        std::unique_ptr<WorkerSubprocess> proc;
 
-        tearDown([&] {
-            delete proc;
-            proc = nullptr;
-        });
+        tearDown([&] { proc.reset(); });
 
         test("getFinishStatus()==TIMEOUT", [&] {
-            proc = new WorkerSubprocess(50ms, [](PipeWriter*) {
-                auto endTime = high_resolution_clock::now() + 200ms;
-                volatile int spins = 0;
-                while (high_resolution_clock::now() <= endTime) {
-                    spins += 1;
-                }
-            });
+            proc = std::make_unique<WorkerSubprocess>(
+              50ms, [](std::unique_ptr<PipeWriter>) {
+                  auto endTime = high_resolution_clock::now() + 200ms;
+                  volatile int spins = 0;
+                  while (high_resolution_clock::now() <= endTime) {
+                      spins += 1;
+                  }
+              });
             sleep_for(100ms);
             expect(proc->getFinishStatus() == Subprocess::TIMEOUT);
         });

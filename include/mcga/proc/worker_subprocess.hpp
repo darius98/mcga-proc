@@ -1,6 +1,8 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
+#include <utility>
 
 #include "pipe.hpp"
 #include "subprocess.hpp"
@@ -9,35 +11,29 @@ namespace mcga::proc {
 
 class WorkerSubprocess : public Subprocess {
   public:
-    using Work = const std::function<void(PipeWriter*)>&;
-
-    WorkerSubprocess(const std::chrono::nanoseconds& timeLimit, Work run)
+    template<class Work>
+    WorkerSubprocess(const std::chrono::nanoseconds& timeLimit, Work&& work)
             : startTime(std::chrono::high_resolution_clock::now()),
               timeLimit(timeLimit) {
-        auto pipe = createAnonymousPipe();
-        subprocess = Subprocess::Fork([&pipe, &run]() {
-            delete pipe.first;
-            run(pipe.second);
-            delete pipe.second;
-        });
-        pipeReader = pipe.first;
-
-        delete pipe.second;
+        auto [reader, writer] = createAnonymousPipe();
+        pipeReader = std::move(reader);
+        subprocess
+          = Subprocess::Fork([writer = std::move(writer),
+                              work = std::forward<Work>(work)]() mutable {
+                std::forward<Work>(work)(std::move(writer));
+            });
+        writer.reset();
     }
 
     WorkerSubprocess(WorkerSubprocess&& other) noexcept
-            : subprocess(other.subprocess), pipeReader(other.pipeReader),
+            : subprocess(std::move(other.subprocess)),
+              pipeReader(std::move(other.pipeReader)),
               startTime(other.startTime), timeLimit(other.timeLimit) {
-        other.subprocess = nullptr;
-        other.pipeReader = nullptr;
     }
 
     WorkerSubprocess(const WorkerSubprocess& other) = delete;
 
-    ~WorkerSubprocess() override {
-        delete subprocess;
-        delete pipeReader;
-    }
+    ~WorkerSubprocess() override = default;
 
     std::chrono::nanoseconds elapsedTime() const {
         return std::chrono::high_resolution_clock::now() - startTime;
@@ -88,8 +84,8 @@ class WorkerSubprocess : public Subprocess {
     }
 
   private:
-    Subprocess* subprocess;
-    PipeReader* pipeReader;
+    std::unique_ptr<Subprocess> subprocess;
+    std::unique_ptr<PipeReader> pipeReader;
     std::chrono::high_resolution_clock::time_point startTime;
     std::chrono::high_resolution_clock::duration timeLimit;
 };

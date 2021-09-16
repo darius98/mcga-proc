@@ -9,16 +9,14 @@ using namespace mcga::proc;
 using namespace std;
 
 TEST_CASE(PipeTest, "Pipe") {
-    PipeReader* reader = nullptr;
-    PipeWriter* writer = nullptr;
+    std::unique_ptr<PipeReader> reader;
+    std::unique_ptr<PipeWriter> writer;
 
     setUp([&] { tie(reader, writer) = createAnonymousPipe(); });
 
     tearDown([&] {
-        delete reader;
-        delete writer;
-        reader = nullptr;
-        writer = nullptr;
+        reader.reset();
+        writer.reset();
     });
 
     test("Sending one message", [&] {
