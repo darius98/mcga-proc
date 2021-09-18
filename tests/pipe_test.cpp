@@ -6,7 +6,6 @@
 using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
-using namespace std;
 
 TEST_CASE(PipeTest, "Pipe") {
     std::unique_ptr<PipeReader> reader;
@@ -43,7 +42,7 @@ TEST_CASE(PipeTest, "Pipe") {
             writer->sendMessage(3 * i - 2, 3 * i - 1, 3 * i);
             message = reader->getNextMessage();
             expect(!message.isInvalid(),
-                   "Message " + to_string(i) + "is invalid!");
+                   "Message " + std::to_string(i) + "is invalid!");
             message >> x >> y >> z;
             expect(x, isEqualTo(3 * i - 2));
             expect(y, isEqualTo(3 * i - 1));
@@ -64,7 +63,7 @@ TEST_CASE(PipeTest, "Pipe") {
                 for (int j = i - 3; j <= i; ++j) {
                     message = reader->getNextMessage();
                     expect(!message.isInvalid(),
-                           "Message " + to_string(j) + "is invalid!");
+                           "Message " + std::to_string(j) + "is invalid!");
                     message >> x >> y >> z;
                     expect(x, isEqualTo(3 * j - 2));
                     expect(y, isEqualTo(3 * j - 1));
@@ -82,7 +81,7 @@ TEST_CASE(PipeTest, "Pipe") {
         for (int i = 1; i <= 100; ++i) {
             auto message = reader->getNextMessage();
             expect(!message.isInvalid(),
-                   "Message " + to_string(i) + " is invalid!");
+                   "Message " + std::to_string(i) + " is invalid!");
             int x, y, z;
             message >> x >> y >> z;
             expect(x, isEqualTo(3 * i - 2));

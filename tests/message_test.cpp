@@ -8,7 +8,6 @@
 using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
-using namespace std;
 
 TEST_CASE(MessageTest, "Message") {
     test("Building & reading a message from 3 ints", [] {
@@ -40,14 +39,14 @@ TEST_CASE(MessageTest, "Message") {
     });
 
     test("Building & reading a message containing strings", [] {
-        string s = "abc";
+        std::string s = "abc";
         int r = 5;
-        string t = "def";
+        std::string t = "def";
         auto message = Message::Build(s, r, t);
         expect(message.isInvalid(), isFalse);
-        string a;
+        std::string a;
         int b;
-        string c;
+        std::string c;
         message >> a >> b >> c;
         expect(a, isEqualTo(s));
         expect(b, isEqualTo(r));
@@ -62,14 +61,14 @@ TEST_CASE(MessageTest, "Message") {
     test("Copying", [] {
         int a = 2;
         int b = 4;
-        string s = "abc";
+        std::string s = "abc";
         auto message = Message::Build(a, b, s);
 
         expect(message.isInvalid(), isFalse);
 
         int x;
         int y;
-        string t;
+        std::string t;
         message >> x >> y >> t;
         expect(x, isEqualTo(a));
         expect(y, isEqualTo(b));
@@ -79,7 +78,7 @@ TEST_CASE(MessageTest, "Message") {
         expect(messageCopy.isInvalid(), isFalse);
         int x2;
         int y2;
-        string t2;
+        std::string t2;
         messageCopy >> x2 >> y2 >> t2;
         expect(x2, isEqualTo(a));
         expect(y2, isEqualTo(b));
@@ -89,7 +88,7 @@ TEST_CASE(MessageTest, "Message") {
         expect(messageCopy.isInvalid(), isFalse);
         int x3;
         int y3;
-        string t3;
+        std::string t3;
         messageCopy >> x3 >> y3 >> t3;
         expect(x3, isEqualTo(a));
         expect(y3, isEqualTo(b));
