@@ -8,8 +8,6 @@
 
 using namespace mcga::test;
 using namespace mcga::proc;
-using namespace std;
-using std::this_thread::sleep_for;
 
 TEST_CASE(SubprocessTest, "Subprocess") {
     group("Fork into process doing nothing, after 50ms", [] {
@@ -17,7 +15,7 @@ TEST_CASE(SubprocessTest, "Subprocess") {
 
         setUp([&proc] {
             proc = Subprocess::Fork([] {});
-            sleep_for(50ms);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         });
 
         tearDown([&proc] { proc.reset(); });
@@ -43,7 +41,7 @@ TEST_CASE(SubprocessTest, "Subprocess") {
 
         setUp([&proc] {
             proc = Subprocess::Fork([] { exit(17); });
-            sleep_for(50ms);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         });
 
         tearDown([&proc] { proc.reset(); });
@@ -70,7 +68,7 @@ TEST_CASE(SubprocessTest, "Subprocess") {
 
         setUp([&proc] {
             proc = Subprocess::Fork([] { raise(SIGINT); });
-            sleep_for(50ms);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         });
 
         tearDown([&proc] { proc.reset(); });
@@ -97,12 +95,12 @@ TEST_CASE(SubprocessTest, "Subprocess") {
 
         setUp([&proc] {
             proc = Subprocess::Fork([] {
-                volatile int spins = 0;
+                std::atomic_int spins = 0;
                 while (spins >= 0) {
                     spins += 1;
                 }
             });
-            sleep_for(50ms);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         });
 
         tearDown([&proc] {

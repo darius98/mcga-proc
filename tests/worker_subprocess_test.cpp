@@ -7,9 +7,8 @@
 
 using namespace mcga::test;
 using namespace mcga::proc;
-using namespace std;
-using std::chrono::high_resolution_clock;
-using std::this_thread::sleep_for;
+
+constexpr auto fifty_ms = std::chrono::milliseconds(50);
 
 TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
     group("Send a message, then die", [] {
@@ -17,10 +16,10 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
 
         setUp([&] {
             proc = std::make_unique<WorkerSubprocess>(
-              50ms, [](std::unique_ptr<PipeWriter> writer) {
+              fifty_ms, [](std::unique_ptr<PipeWriter> writer) {
                   writer->sendMessage(2, 0, 1, 9);
               });
-            sleep_for(50ms);
+            std::this_thread::sleep_for(fifty_ms);
         });
 
         tearDown([&] { proc.reset(); });
@@ -59,8 +58,8 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
 
         test("getNextMessage(32) is invalid", [&] {
             proc = std::make_unique<WorkerSubprocess>(
-              50ms, [](std::unique_ptr<PipeWriter>) {});
-            sleep_for(50ms);
+              fifty_ms, [](std::unique_ptr<PipeWriter>) {});
+            std::this_thread::sleep_for(fifty_ms);
             expect(proc->getNextMessage(32).isInvalid());
         });
     });
@@ -72,14 +71,15 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
 
         test("getFinishStatus()==TIMEOUT", [&] {
             proc = std::make_unique<WorkerSubprocess>(
-              50ms, [](std::unique_ptr<PipeWriter>) {
-                  auto endTime = high_resolution_clock::now() + 200ms;
-                  volatile int spins = 0;
-                  while (high_resolution_clock::now() <= endTime) {
+              fifty_ms, [](std::unique_ptr<PipeWriter>) {
+                  auto endTime
+                    = std::chrono::high_resolution_clock::now() + 4 * fifty_ms;
+                  std::atomic_int spins = 0;
+                  while (std::chrono::high_resolution_clock::now() <= endTime) {
                       spins += 1;
                   }
               });
-            sleep_for(100ms);
+            std::this_thread::sleep_for(2 * fifty_ms);
             expect(proc->getFinishStatus() == Subprocess::TIMEOUT);
         });
     });
