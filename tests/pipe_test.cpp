@@ -41,8 +41,7 @@ TEST_CASE(PipeTest, "Pipe") {
         for (int i = 1; i <= 100; ++i) {
             writer->sendMessage(3 * i - 2, 3 * i - 1, 3 * i);
             message = reader->getNextMessage();
-            expect(!message.isInvalid(),
-                   "Message " + std::to_string(i) + "is invalid!");
+            expect(!message.isInvalid());
             message >> x >> y >> z;
             expect(x, isEqualTo(3 * i - 2));
             expect(y, isEqualTo(3 * i - 1));
@@ -62,8 +61,7 @@ TEST_CASE(PipeTest, "Pipe") {
             if (i % 4 == 0) {
                 for (int j = i - 3; j <= i; ++j) {
                     message = reader->getNextMessage();
-                    expect(!message.isInvalid(),
-                           "Message " + std::to_string(j) + "is invalid!");
+                    expect(!message.isInvalid());
                     message >> x >> y >> z;
                     expect(x, isEqualTo(3 * j - 2));
                     expect(y, isEqualTo(3 * j - 1));
@@ -80,8 +78,7 @@ TEST_CASE(PipeTest, "Pipe") {
 
         for (int i = 1; i <= 100; ++i) {
             auto message = reader->getNextMessage();
-            expect(!message.isInvalid(),
-                   "Message " + std::to_string(i) + " is invalid!");
+            expect(!message.isInvalid());
             int x, y, z;
             message >> x >> y >> z;
             expect(x, isEqualTo(3 * i - 2));

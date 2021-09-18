@@ -2,6 +2,7 @@
 #include <thread>
 
 #include <mcga/test.hpp>
+#include <mcga/test_ext/matchers.hpp>
 
 #include "mcga/proc/worker_subprocess.hpp"
 
@@ -41,11 +42,13 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
 
         test("getNextMessage(32) is the sent message", [&] {
             auto message = proc->getNextMessage(32);
-            expect(!message.isInvalid(), "Message is invalid.");
+            expect(!message.isInvalid());
             int a, b, c, d;
             message >> a >> b >> c >> d;
-            expect(a == 2 && b == 0 && c == 1 && d == 9,
-                   "Message content is invalid.");
+            expect(a, 2);
+            expect(b, 0);
+            expect(c, 1);
+            expect(d, 9);
         });
     });
 
@@ -80,7 +83,7 @@ TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
                   }
               });
             std::this_thread::sleep_for(2 * fifty_ms);
-            expect(proc->getFinishStatus() == Subprocess::TIMEOUT);
+            expect(proc->getFinishStatus(), Subprocess::TIMEOUT);
         });
     });
 }
