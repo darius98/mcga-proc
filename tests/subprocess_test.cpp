@@ -9,7 +9,7 @@
 using namespace mcga::test;
 using namespace mcga::proc;
 
-TEST_CASE(SubprocessTest, "Subprocess") {
+TEST_CASE("Subprocess") {
     group("Fork into process doing nothing, after 50ms", [] {
         std::unique_ptr<Subprocess> proc;
 

@@ -7,7 +7,7 @@ using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 
-TEST_CASE(PipeTest, "Pipe") {
+TEST_CASE("Pipe") {
     std::unique_ptr<PipeReader> reader;
     std::unique_ptr<PipeWriter> writer;
 

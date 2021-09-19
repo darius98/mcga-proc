@@ -11,7 +11,7 @@ using namespace mcga::proc;
 
 constexpr auto fifty_ms = std::chrono::milliseconds(50);
 
-TEST_CASE(WorkerSubprocessTest, "Worker subprocess") {
+TEST_CASE("Worker subprocess") {
     group("Send a message, then die", [] {
         std::unique_ptr<WorkerSubprocess> proc;
 
