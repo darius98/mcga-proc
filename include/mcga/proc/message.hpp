@@ -1,7 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 namespace mcga::proc {
 
@@ -77,9 +80,46 @@ class Message {
 
     template<class T>
     Message& operator>>(T& obj) {
+        static_assert(
+          std::is_trivially_copyable_v<T>,
+          "Unable to automatically deserialize type. Please specialize "
+          "mcga::proc::Message::operator>>() for this type.");
+
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         obj = *reinterpret_cast<T*>(at(readHead));
         readHead += sizeof(obj);
+        return *this;
+    }
+
+    template<class T>
+    Message& operator>>(std::optional<T>& obj) {
+        const auto hasValue = read<bool>();
+        if (hasValue) {
+            obj = read<T>();
+        } else {
+            obj = std::nullopt;
+        }
+        return *this;
+    }
+
+    template<class T>
+    Message& operator>>(std::vector<T>& obj) {
+        const auto size = read<typename std::vector<T>::size_type>();
+        obj.resize(size);
+        for (auto& entry: obj) {
+            (*this) >> entry;
+        }
+        return *this;
+    }
+
+    Message& operator>>(std::string& obj) {
+        const auto size = read<std::string::size_type>();
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        obj.assign(
+          reinterpret_cast<char*>(at(readHead)),
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+          reinterpret_cast<char*>(at(readHead + size)));
+        readHead += size;
         return *this;
     }
 
@@ -122,7 +162,41 @@ class Message {
 
         template<class T>
         BytesConsumer& add(const T& obj) {
+            static_assert(
+              std::is_trivially_copyable_v<T>,
+              "Unable to automatically serialize type. Please specialize "
+              "mcga::proc::Message::BytesConsumer::add() for this type.");
             return addBytes(&obj, sizeof(obj));
+        }
+
+        template<class T>
+        BytesConsumer& add(const std::optional<T>& obj) {
+            add(obj.has_value());
+            if (obj.has_value()) {
+                add(*obj);
+            }
+            return *this;
+        }
+
+        template<class T>
+        BytesConsumer& add(const std::vector<T>& obj) {
+            add(obj.size());
+            for (const auto& entry: obj) {
+                add(entry);
+            }
+            return *this;
+        }
+
+        BytesConsumer& add(const std::string& obj) {
+            add(obj.size());
+            addBytes(obj.c_str(), obj.size());
+            return *this;
+        }
+
+        BytesConsumer& add(const Message& obj) {
+            auto contentSize = ExpectedContentSizeFromBuffer(obj.payload.get());
+            addBytes(obj.at(prefixSize), contentSize);
+            return *this;
         }
 
         template<class T1, class T2, class... Args>
@@ -181,32 +255,5 @@ class Message {
     friend class PipeReader;
     friend class PipeWriter;
 };
-
-template<>
-inline Message& Message::operator>>(std::string& obj) {
-    decltype(obj.size()) size;
-    (*this) >> size;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    obj.assign(reinterpret_cast<char*>(at(readHead)),
-               // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-               reinterpret_cast<char*>(at(readHead + size)));
-    readHead += size;
-    return *this;
-}
-
-template<>
-inline Message::BytesConsumer&
-  Message::BytesConsumer::add(const std::string& obj) {
-    add(obj.size());
-    addBytes(obj.c_str(), obj.size());
-    return *this;
-}
-
-template<>
-inline Message::BytesConsumer& Message::BytesConsumer::add(const Message& obj) {
-    auto contentSize = ExpectedContentSizeFromBuffer(obj.payload.get());
-    addBytes(obj.at(prefixSize), contentSize);
-    return *this;
-}
 
 }  // namespace mcga::proc
