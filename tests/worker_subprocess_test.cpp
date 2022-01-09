@@ -23,22 +23,33 @@ static auto t = TestCase("Worker subprocess") + [] {
             std::this_thread::sleep_for(fifty_ms);
         });
 
-        tearDown([&] { proc.reset(); });
+        tearDown([&] {
+            proc.reset();
+        });
 
-        test("isFinished() == true", [&] { expect(proc->isFinished()); });
+        test("isFinished() == true", [&] {
+            expect(proc->isFinished());
+        });
 
-        test("kill() == ALREADY_DEAD",
-             [&] { expect(proc->kill() == Subprocess::ALREADY_DEAD); });
+        test("kill() == ALREADY_DEAD", [&] {
+            expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        });
 
-        test("isExited() == true", [&] { expect(proc->isExited()); });
+        test("isExited() == true", [&] {
+            expect(proc->isExited());
+        });
 
-        test("getReturnCode() == 0",
-             [&] { expect(proc->getReturnCode() == 0); });
+        test("getReturnCode() == 0", [&] {
+            expect(proc->getReturnCode() == 0);
+        });
 
-        test("isSignaled() == false", [&] { expect(!proc->isSignaled()); });
+        test("isSignaled() == false", [&] {
+            expect(!proc->isSignaled());
+        });
 
-        test("getFinishStatus() == ZERO_EXIT",
-             [&] { expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT); });
+        test("getFinishStatus() == ZERO_EXIT", [&] {
+            expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT);
+        });
 
         test("getNextMessage(32) is the sent message", [&] {
             auto message = proc->getNextMessage(32);
@@ -57,7 +68,9 @@ static auto t = TestCase("Worker subprocess") + [] {
 
         // TODO: Add cleanup() functionality to mcga::test. This shouldn't be a
         //  group!
-        tearDown([&] { proc.reset(); });
+        tearDown([&] {
+            proc.reset();
+        });
 
         test("getNextMessage(32) is invalid", [&] {
             proc = std::make_unique<WorkerSubprocess>(
@@ -70,7 +83,9 @@ static auto t = TestCase("Worker subprocess") + [] {
     group("Timeout", [] {
         std::unique_ptr<WorkerSubprocess> proc;
 
-        tearDown([&] { proc.reset(); });
+        tearDown([&] {
+            proc.reset();
+        });
 
         test("getFinishStatus()==TIMEOUT", [&] {
             proc = std::make_unique<WorkerSubprocess>(

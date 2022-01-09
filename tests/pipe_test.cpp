@@ -11,7 +11,9 @@ static auto t = TestCase{"Pipe"} + [] {
     std::unique_ptr<PipeReader> reader;
     std::unique_ptr<PipeWriter> writer;
 
-    setUp([&] { tie(reader, writer) = createAnonymousPipe(); });
+    setUp([&] {
+        tie(reader, writer) = createAnonymousPipe();
+    });
 
     tearDown([&] {
         reader.reset();
