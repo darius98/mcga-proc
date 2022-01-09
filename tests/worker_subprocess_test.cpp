@@ -11,7 +11,7 @@ using namespace mcga::proc;
 
 constexpr auto fifty_ms = std::chrono::milliseconds(50);
 
-TEST_CASE("Worker subprocess") {
+static auto t = TestCase("Worker subprocess") + [] {
     group("Send a message, then die", [] {
         std::unique_ptr<WorkerSubprocess> proc;
 
@@ -86,4 +86,4 @@ TEST_CASE("Worker subprocess") {
             expect(proc->getFinishStatus(), Subprocess::TIMEOUT);
         });
     });
-}
+};

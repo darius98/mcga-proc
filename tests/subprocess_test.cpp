@@ -9,7 +9,7 @@
 using namespace mcga::test;
 using namespace mcga::proc;
 
-TEST_CASE("Subprocess") {
+static auto t = TestCase{"Subprocess"} + [] {
     group("Fork into process doing nothing, after 50ms", [] {
         std::unique_ptr<Subprocess> proc;
 
@@ -120,4 +120,4 @@ TEST_CASE("Subprocess") {
         test("getFinishStatus() == NO_EXIT",
              [&] { expect(proc->getFinishStatus() == Subprocess::NO_EXIT); });
     });
-}
+};
