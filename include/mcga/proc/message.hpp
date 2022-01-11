@@ -130,6 +130,33 @@ class Message {
         return obj;
     }
 
+    [[nodiscard]] std::string debugPayloadAsInts() const {
+        const auto size = getSize();
+        std::string hex;
+        hex.reserve((size - prefixSize) * 4);
+        for (std::size_t i = prefixSize; i < size; i++) {
+            hex += std::to_string((int)*at(i));
+            hex += ' ';
+        }
+        return hex;
+    }
+
+    [[nodiscard]] std::string debugPayloadAsHex() const {
+        const char hexDigits[] = "0123456789ABCDEF";
+        const auto size = getSize() - prefixSize;
+        std::string hex;
+        hex.reserve(size * 2);
+        for (std::size_t i = 0; i < size; i++) {
+            hex += hexDigits[payload[prefixSize + i] / 16];
+            hex += hexDigits[payload[prefixSize + i] % 16];
+        }
+        return hex;
+    }
+
+    [[nodiscard]] std::string debugPayloadAsChars() const {
+        return {(char*)payload.get() + prefixSize, (char*)payload.get() + getSize()};
+    }
+
   private:
     explicit Message(uint8_t* payload) noexcept: payload(payload) {
     }
