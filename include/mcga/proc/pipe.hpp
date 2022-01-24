@@ -36,7 +36,7 @@ class PipeWriter {
     }
 
     template<class... Args>
-    void sendMessage(const Args... args) {
+    void sendMessage(const Args&... args) {
         sendMessage(Message::Build(args...));
     }
 

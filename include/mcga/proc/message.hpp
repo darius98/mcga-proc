@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdlib>
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -85,9 +87,11 @@ class Message {
           "Unable to automatically deserialize type. Please specialize "
           "mcga::proc::Message::operator>>() for this type.");
 
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        obj = *reinterpret_cast<T*>(at(readHead));
-        readHead += sizeof(obj);
+        obj.~T();
+        memcpy(&obj, at(readHead), sizeof(T));
+        // TODO: This doesn't feel right (we don't start object lifetime for
+        //  obj after memcpy). Use something like std::launder?
+        readHead += sizeof(T);
         return *this;
     }
 
@@ -154,7 +158,8 @@ class Message {
     }
 
     [[nodiscard]] std::string debugPayloadAsChars() const {
-        return {(char*)payload.get() + prefixSize, (char*)payload.get() + getSize()};
+        return {(char*)payload.get() + prefixSize,
+                (char*)payload.get() + getSize()};
     }
 
   private:
