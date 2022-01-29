@@ -7,7 +7,7 @@ using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 
-static auto t = TestCase{"Pipe"} + [] {
+TEST_CASE("Pipe") {
     std::unique_ptr<PipeReader> reader;
     std::unique_ptr<PipeWriter> writer;
 
@@ -93,4 +93,4 @@ static auto t = TestCase{"Pipe"} + [] {
         Message message = reader->getNextMessage(100);  // 100 read attempts
         expect(message.isInvalid(), isTrue);
     });
-};
+}

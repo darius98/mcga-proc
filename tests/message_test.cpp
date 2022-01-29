@@ -9,7 +9,7 @@ using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 
-static auto t = TestCase{"Message"} + [] {
+TEST_CASE("Message") {
     test("Building & reading a message from 3 ints", [] {
         auto message = Message::Build(1, 2, 3);
         int x, y, z;
@@ -129,4 +129,4 @@ static auto t = TestCase{"Message"} + [] {
         message >> actualContent;
         expect(actualContent, isEqualTo(messageContent));
     });
-};
+}
