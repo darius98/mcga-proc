@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdlib>
+#include <cstring>
 
 #include <memory>
 #include <optional>
@@ -264,7 +266,7 @@ class Message {
       public:
         explicit Builder(std::size_t size)
                 : payloadBuilder(Allocate(size + prefixSize)) {
-            memset((void*)payloadBuilder, 0, prefixSize);
+            std::memset((void*)payloadBuilder, 0, prefixSize);
             copy_data(payloadBuilder, &size, sizeof(std::size_t));
             cursor = prefixSize;
         }
