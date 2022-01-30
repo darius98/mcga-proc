@@ -32,7 +32,7 @@ class Message {
             return Message();
         }
         auto messagePayload = Allocate(expectedSize);
-        std::memcpy(messagePayload, src, expectedSize);
+        copy_data(messagePayload, src, expectedSize);
         return Message(messagePayload);
     }
 
@@ -42,7 +42,7 @@ class Message {
         if (!other.isInvalid()) {
             auto size = other.getSize();
             payload.reset(Allocate(size));
-            std::memcpy(payload.get(), other.payload.get(), size);
+            copy_data(payload.get(), other.payload.get(), size);
         }
     }
 
@@ -58,7 +58,7 @@ class Message {
         if (!other.isInvalid()) {
             auto size = other.getSize();
             payload.reset(Allocate(size));
-            std::memcpy(payload.get(), other.payload.get(), size);
+            copy_data(payload.get(), other.payload.get(), size);
         }
         return *this;
     }
@@ -88,7 +88,7 @@ class Message {
           "mcga::proc::Message::operator>>() for this type.");
 
         obj.~T();
-        std::memcpy(&obj, at(readHead), sizeof(T));
+        copy_data(&obj, at(readHead), sizeof(T));
         // TODO: This doesn't feel right (we don't start object lifetime for
         //  obj after memcpy). Use something like std::launder?
         readHead += sizeof(T);
@@ -118,11 +118,8 @@ class Message {
 
     Message& operator>>(std::string& obj) {
         const auto size = read<std::string::size_type>();
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        obj.assign(
-          reinterpret_cast<char*>(at(readHead)),
-          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-          reinterpret_cast<char*>(at(readHead + size)));
+        obj.assign(reinterpret_cast<char*>(at(readHead)),
+                   reinterpret_cast<char*>(at(readHead + size)));
         readHead += size;
         return *this;
     }
@@ -163,6 +160,11 @@ class Message {
     }
 
   private:
+    template<class In, class Out>
+    static void copy_data(Out* out, const In* in, std::size_t size) {
+        std::memcpy((void*)out, (const void*)in, size);
+    }
+
     explicit Message(uint8_t* payload) noexcept: payload(payload) {
     }
 
@@ -171,7 +173,6 @@ class Message {
     }
 
     std::uint8_t* at(std::size_t pos) const {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         return &payload[pos];
     }
 
@@ -263,14 +264,13 @@ class Message {
       public:
         explicit Builder(std::size_t size)
                 : payloadBuilder(Allocate(size + prefixSize)) {
-            memset(payloadBuilder, 0, prefixSize);
-            std::memcpy(payloadBuilder, &size, sizeof(std::size_t));
+            memset((void*)payloadBuilder, 0, prefixSize);
+            copy_data(payloadBuilder, &size, sizeof(std::size_t));
             cursor = prefixSize;
         }
 
         Builder& addBytes(const void* bytes, std::size_t numBytes) override {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            std::memcpy(payloadBuilder + cursor, bytes, numBytes);
+            copy_data(payloadBuilder + cursor, bytes, numBytes);
             cursor += numBytes;
             return *this;
         }
