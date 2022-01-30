@@ -32,7 +32,7 @@ class Message {
             return Message();
         }
         auto messagePayload = Allocate(expectedSize);
-        memcpy(messagePayload, src, expectedSize);
+        std::memcpy(messagePayload, src, expectedSize);
         return Message(messagePayload);
     }
 
@@ -42,7 +42,7 @@ class Message {
         if (!other.isInvalid()) {
             auto size = other.getSize();
             payload.reset(Allocate(size));
-            memcpy(payload.get(), other.payload.get(), size);
+            std::memcpy(payload.get(), other.payload.get(), size);
         }
     }
 
@@ -58,7 +58,7 @@ class Message {
         if (!other.isInvalid()) {
             auto size = other.getSize();
             payload.reset(Allocate(size));
-            memcpy(payload.get(), other.payload.get(), size);
+            std::memcpy(payload.get(), other.payload.get(), size);
         }
         return *this;
     }
@@ -88,7 +88,7 @@ class Message {
           "mcga::proc::Message::operator>>() for this type.");
 
         obj.~T();
-        memcpy(&obj, at(readHead), sizeof(T));
+        std::memcpy(&obj, at(readHead), sizeof(T));
         // TODO: This doesn't feel right (we don't start object lifetime for
         //  obj after memcpy). Use something like std::launder?
         readHead += sizeof(T);
@@ -264,13 +264,13 @@ class Message {
         explicit Builder(std::size_t size)
                 : payloadBuilder(Allocate(size + prefixSize)) {
             memset(payloadBuilder, 0, prefixSize);
-            memcpy(payloadBuilder, &size, sizeof(std::size_t));
+            std::memcpy(payloadBuilder, &size, sizeof(std::size_t));
             cursor = prefixSize;
         }
 
         Builder& addBytes(const void* bytes, std::size_t numBytes) override {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            memcpy(payloadBuilder + cursor, bytes, numBytes);
+            std::memcpy(payloadBuilder + cursor, bytes, numBytes);
             cursor += numBytes;
             return *this;
         }
