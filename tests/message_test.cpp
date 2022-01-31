@@ -115,14 +115,13 @@ TEST_CASE("Message") {
     // This test kind of uses internals of the message, but it's a lot easier
     // to test this here instead of in the PipeReader class.
     test("Reading a message from a buffer", [] {
-        void* buffer = malloc(100);
+        uint8_t buffer[100];
         size_t bufferSize = 100;
         size_t messageSize = sizeof(int);
         int messageContent = 42;
         memcpy(buffer, &messageSize, sizeof(size_t));
-        memcpy(static_cast<uint8_t*>(buffer) + alignof(std::max_align_t),
-               &messageContent,
-               sizeof(int));
+        memcpy(
+          buffer + alignof(std::max_align_t), &messageContent, sizeof(int));
         Message message = Message::Read(buffer, bufferSize);
         expect(message.isInvalid(), isFalse);
         int actualContent;
