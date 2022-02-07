@@ -10,6 +10,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "serialization.hpp"
+
 namespace mcga::proc {
 
 class Message {
@@ -18,11 +20,21 @@ class Message {
   public:
     template<class... Args>
     static Message Build(const Args&... args) {
-        BytesCounter counter;
-        counter.add(args...);
-        Builder messageBuilder(counter.getNumBytesConsumed());
-        messageBuilder.add(args...);
-        return messageBuilder.build();
+        std::size_t numBytes = 0;
+        write_from([&numBytes](const void*, std::size_t size) {
+            numBytes += size;
+        }, args...);
+
+        std::uint8_t* payload = Allocate(numBytes + prefixSize);
+        std::memset((void*)payload, 0, prefixSize);
+        copy_data(payload, &numBytes, sizeof(numBytes));
+
+        std::size_t cursor = prefixSize;
+        write_from([payload, &cursor](const void* data, std::size_t size) {
+            copy_data(payload + cursor, data, size);
+            cursor += size;
+        }, args...);
+        return Message(payload);
     }
 
     static Message Read(const void* src, std::size_t maxSize) {
@@ -84,52 +96,20 @@ class Message {
 
     template<class T>
     Message& operator>>(T& obj) {
-        static_assert(
-          std::is_trivially_copyable_v<T>,
-          "Unable to automatically deserialize type. Please specialize "
-          "mcga::proc::Message::operator>>() for this type.");
-
-        obj.~T();
-        copy_data(&obj, at(readHead), sizeof(T));
-        // TODO: This doesn't feel right (we don't start object lifetime for
-        //  obj after memcpy). Use something like std::launder?
-        readHead += sizeof(T);
-        return *this;
-    }
-
-    template<class T>
-    Message& operator>>(std::optional<T>& obj) {
-        const auto hasValue = read<bool>();
-        if (hasValue) {
-            obj = read<T>();
-        } else {
-            obj = std::nullopt;
-        }
-        return *this;
-    }
-
-    template<class T>
-    Message& operator>>(std::vector<T>& obj) {
-        const auto size = read<typename std::vector<T>::size_type>();
-        obj.resize(size);
-        for (auto& entry: obj) {
-            (*this) >> entry;
-        }
-        return *this;
-    }
-
-    Message& operator>>(std::string& obj) {
-        const auto size = read<std::string::size_type>();
-        obj.assign(reinterpret_cast<char*>(at(readHead)),
-                   reinterpret_cast<char*>(at(readHead + size)));
-        readHead += size;
+        read_into([this](void* buf, std::size_t size) {
+            copy_data(buf, at(readHead), size);
+            readHead += size;
+        }, obj);
         return *this;
     }
 
     template<class T>
     T read() {
         T obj;
-        (*this) >> obj;
+        read_into([this](void* buf, std::size_t size) {
+            copy_data(buf, at(readHead), size);
+            readHead += size;
+        }, obj);
         return obj;
     }
 
@@ -189,102 +169,6 @@ class Message {
     static std::uint8_t* Allocate(std::size_t numBytes) {
         return new std::uint8_t[numBytes];
     }
-
-    class BytesConsumer {
-      public:
-        virtual BytesConsumer& addBytes(const void* bytes, std::size_t numBytes)
-          = 0;
-
-        template<class T>
-        BytesConsumer& add(const T& obj) {
-            static_assert(
-              std::is_trivially_copyable_v<T>,
-              "Unable to automatically serialize type. Please specialize "
-              "mcga::proc::Message::BytesConsumer::add() for this type.");
-            return addBytes(&obj, sizeof(obj));
-        }
-
-        template<class T>
-        BytesConsumer& add(const std::optional<T>& obj) {
-            add(obj.has_value());
-            if (obj.has_value()) {
-                add(*obj);
-            }
-            return *this;
-        }
-
-        template<class T>
-        BytesConsumer& add(const std::vector<T>& obj) {
-            add(obj.size());
-            for (const auto& entry: obj) {
-                add(entry);
-            }
-            return *this;
-        }
-
-        BytesConsumer& add(const std::string& obj) {
-            add(obj.size());
-            addBytes(obj.c_str(), obj.size());
-            return *this;
-        }
-
-        BytesConsumer& add(const Message& obj) {
-            auto contentSize = ExpectedContentSizeFromBuffer(obj.payload.get());
-            addBytes(obj.at(prefixSize), contentSize);
-            return *this;
-        }
-
-        template<class T1, class T2, class... Args>
-        BytesConsumer& add(const T1& a1, const T2& a2, const Args... args) {
-            add(a1);
-            return add(a2, args...);
-        }
-
-        template<class T>
-        BytesConsumer& operator<<(const T& obj) {
-            return add(obj);
-        }
-    };
-
-    class BytesCounter : public BytesConsumer {
-      public:
-        BytesCounter& addBytes(const void* /*bytes*/,
-                               std::size_t numBytes) override {
-            bytesConsumed += numBytes;
-            return *this;
-        }
-
-        std::size_t getNumBytesConsumed() const {
-            return bytesConsumed;
-        }
-
-      private:
-        std::size_t bytesConsumed = 0;
-    };
-
-    class Builder : public BytesConsumer {
-      public:
-        explicit Builder(std::size_t size)
-                : payloadBuilder(Allocate(size + prefixSize)) {
-            std::memset((void*)payloadBuilder, 0, prefixSize);
-            copy_data(payloadBuilder, &size, sizeof(std::size_t));
-            cursor = prefixSize;
-        }
-
-        Builder& addBytes(const void* bytes, std::size_t numBytes) override {
-            copy_data(payloadBuilder + cursor, bytes, numBytes);
-            cursor += numBytes;
-            return *this;
-        }
-
-        Message build() {
-            return Message(payloadBuilder);
-        }
-
-      private:
-        std::uint8_t* payloadBuilder;
-        std::size_t cursor;
-    };
 
     friend class PipeReader;
     friend class PipeWriter;
