@@ -14,27 +14,27 @@
 
 namespace mcga::proc {
 
-class Message {
+struct Message {
     static constexpr std::size_t prefixSize = alignof(std::max_align_t);
 
-  public:
-    template<class... Args>
-    static Message Build(const Args&... args) {
+    template<binary_writer Writer, class... Args>
+    static void Write(Writer&& writer, const Args&... args) {
         std::size_t numBytes = 0;
-        write_from([&numBytes](const void*, std::size_t size) {
-            numBytes += size;
-        }, args...);
+        write_from(
+          [&numBytes](const void*, std::size_t size) {
+              numBytes += size;
+          },
+          args...);
+        std::uint8_t prefix[prefixSize];
+        std::memset((void*)prefix, 0, prefixSize);
+        copy_data(prefix, &numBytes, sizeof(numBytes));
 
-        std::uint8_t* payload = Allocate(numBytes + prefixSize);
-        std::memset((void*)payload, 0, prefixSize);
-        copy_data(payload, &numBytes, sizeof(numBytes));
-
-        std::size_t cursor = prefixSize;
-        write_from([payload, &cursor](const void* data, std::size_t size) {
-            copy_data(payload + cursor, data, size);
-            cursor += size;
-        }, args...);
-        return Message(payload);
+        writer((const void*)prefix, prefixSize);
+        write_from(
+          [&writer](const void* data, std::size_t size) {
+              writer(data, size);
+          },
+          args...);
     }
 
     static Message Read(const void* src, std::size_t maxSize) {
@@ -54,7 +54,7 @@ class Message {
 
     Message(const Message& other) {
         if (!other.isInvalid()) {
-            auto size = other.getSize();
+            auto size = other.size();
             payload.reset(Allocate(size));
             copy_data(payload.get(), other.payload.get(), size);
         }
@@ -70,7 +70,7 @@ class Message {
         readHead = prefixSize;
         payload.reset();
         if (!other.isInvalid()) {
-            auto size = other.getSize();
+            auto size = other.size();
             payload.reset(Allocate(size));
             copy_data(payload.get(), other.payload.get(), size);
         }
@@ -87,34 +87,42 @@ class Message {
     }
 
     bool operator==(const Message& other) const {
-        return this == &other || (isInvalid() && other.isInvalid());
+        return payload == other.payload;
     }
 
-    bool isInvalid() const {
+    [[nodiscard]] bool isInvalid() const {
         return payload == nullptr;
+    }
+
+    [[nodiscard]] std::size_t size() const {
+        return prefixSize + ExpectedContentSizeFromBuffer(payload.get());
     }
 
     template<class T>
     Message& operator>>(T& obj) {
-        read_into([this](void* buf, std::size_t size) {
-            copy_data(buf, at(readHead), size);
-            readHead += size;
-        }, obj);
+        read_into(
+          [this](void* buf, std::size_t size) {
+              copy_data(buf, at(readHead), size);
+              readHead += size;
+          },
+          obj);
         return *this;
     }
 
     template<class T>
     T read() {
         T obj;
-        read_into([this](void* buf, std::size_t size) {
-            copy_data(buf, at(readHead), size);
-            readHead += size;
-        }, obj);
+        read_into(
+          [this](void* buf, std::size_t size) {
+              copy_data(buf, at(readHead), size);
+              readHead += size;
+          },
+          obj);
         return obj;
     }
 
     [[nodiscard]] std::string debugPayloadAsInts() const {
-        const auto size = getSize();
+        const auto size = this->size();
         std::string hex;
         hex.reserve((size - prefixSize) * 4);
         for (std::size_t i = prefixSize; i < size; i++) {
@@ -126,7 +134,7 @@ class Message {
 
     [[nodiscard]] std::string debugPayloadAsHex() const {
         const char hexDigits[] = "0123456789ABCDEF";
-        const auto size = getSize() - prefixSize;
+        const auto size = this->size() - prefixSize;
         std::string hex;
         hex.reserve(size * 2);
         for (std::size_t i = 0; i < size; i++) {
@@ -138,7 +146,7 @@ class Message {
 
     [[nodiscard]] std::string debugPayloadAsChars() const {
         return {(char*)payload.get() + prefixSize,
-                (char*)payload.get() + getSize()};
+                (char*)payload.get() + size()};
     }
 
   private:
@@ -148,10 +156,6 @@ class Message {
     }
 
     explicit Message(uint8_t* payload) noexcept: payload(payload) {
-    }
-
-    std::size_t getSize() const {
-        return prefixSize + ExpectedContentSizeFromBuffer(payload.get());
     }
 
     std::uint8_t* at(std::size_t pos) const {

@@ -10,9 +10,19 @@ using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 
+template<class... Args>
+Message buildMessage(const Args&... args) {
+    char buffer[128];
+    Message::Write([buf = buffer](const void* data, std::size_t size) mutable {
+        std::memcpy(buf, data, size);
+        buf += size;
+    }, args...);
+    return Message::Read(buffer, 128);
+}
+
 TEST_CASE("Message") {
     test("Building & reading a message from 3 ints", [] {
-        auto message = Message::Build(1, 2, 3);
+        auto message = buildMessage(1, 2, 3);
         int x, y, z;
         message >> x >> y >> z;
         expect(message.isInvalid(), isFalse);
@@ -26,7 +36,7 @@ TEST_CASE("Message") {
         long long y = 2;
         double z = 3.0;
         char t = 'a';
-        auto message = Message::Build(x, y, z, t);
+        auto message = buildMessage(x, y, z, t);
         int a;
         long long b;
         double c;
@@ -43,7 +53,7 @@ TEST_CASE("Message") {
         std::string s = "abc";
         int r = 5;
         std::string t = "def";
-        auto message = Message::Build(s, r, t);
+        auto message = buildMessage(s, r, t);
         expect(message.isInvalid(), isFalse);
         std::string a;
         int b;
@@ -63,7 +73,7 @@ TEST_CASE("Message") {
         int a = 2;
         int b = 4;
         std::string s = "abc";
-        auto message = Message::Build(a, b, s);
+        auto message = buildMessage(a, b, s);
 
         expect(message.isInvalid(), isFalse);
 
@@ -101,8 +111,8 @@ TEST_CASE("Message") {
         Message message2;
         expect(message1 == message2, isTrue);
 
-        auto a = Message::Build(1, 2, 3);
-        auto b = Message::Build(1, 2, 3);
+        auto a = buildMessage(1, 2, 3);
+        auto b = buildMessage(1, 2, 3);
 
         auto& aRef = a;
         expect(a == aRef, isTrue);

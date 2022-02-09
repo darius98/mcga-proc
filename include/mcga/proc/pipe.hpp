@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "buffered_writer.hpp"
 #include "message.hpp"
 
 namespace mcga::proc {
@@ -21,7 +22,7 @@ class PipeReader {
 
   protected:
     static std::size_t GetMessageSize(const Message& message) {
-        return message.getSize();
+        return message.size();
     }
 };
 
@@ -32,12 +33,18 @@ class PipeWriter {
     virtual ~PipeWriter() = default;
 
     void sendMessage(const Message& message) {
-        sendBytes(message.payload.get(), message.getSize());
+        sendBytes(message.payload.get(), message.size());
     }
 
     template<class... Args>
     void sendMessage(const Args&... args) {
-        sendMessage(Message::Build(args...));
+        auto rawWriter = [this](const void* data, std::size_t size) {
+            sendBytes((const std::uint8_t*)data, size);
+        };
+        auto bufferedWriter
+          = BufferedWriter<256, decltype(rawWriter)>(std::move(rawWriter));
+        Message::Write(bufferedWriter, args...);
+        bufferedWriter.flush();
     }
 
   private:
