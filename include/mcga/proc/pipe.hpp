@@ -32,10 +32,6 @@ class PipeWriter {
 
     virtual ~PipeWriter() = default;
 
-    void sendMessage(const Message& message) {
-        sendBytes(message.payload.get(), message.size());
-    }
-
     template<class... Args>
     void sendMessage(const Args&... args) {
         auto rawWriter = [this](const void* data, std::size_t size) {
