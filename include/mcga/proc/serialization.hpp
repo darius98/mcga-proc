@@ -15,17 +15,12 @@ void read_into(binary_reader auto&& reader, T& obj) {
         obj.mcga_read(reader);
     } else if constexpr (requires { {mcga_read(reader, obj)}; }) {
         mcga_read(reader, obj);
-    } else if constexpr (requires { {obj.mcga_io(reader)}; }) {
-        obj.mcga_io(reader);
-    } else if constexpr (requires { {mcga_io(reader, obj)}; }) {
-        mcga_io(reader, obj);
     } else {
         static_assert(std::is_trivially_copyable_v<T>,
                       "Unable to automatically deserialize type. Please  "
-                      "add an mcga_read(binary_reader auto& reader) "
-                      "or mcga_io(io_device auto& io) method to this type, "
-                      "or specialize mcga_read(binary_reader auto& reader, T& "
-                      "obj) or mcga_io(io_device auto& io, T& obj) for it.");
+                      "add an mcga_read(binary_reader auto& reader) or "
+                      "specialize mcga_read(binary_reader auto& reader, T& "
+                      "obj) for it.");
         static_assert(!std::is_pointer_v<T>,
                       "Unable to automatically deserialize raw pointer.");
         obj.~T();
@@ -59,17 +54,12 @@ void write_from(binary_writer auto&& writer, const T& obj) {
         obj.mcga_write(writer);
     } else if constexpr (requires { {mcga_write(writer, obj)}; }) {
         mcga_write(writer, obj);
-    } else if constexpr (requires { {obj.mcga_io(writer)}; }) {
-        obj.mcga_io(writer);
-    } else if constexpr (requires { {mcga_io(writer, obj)}; }) {
-        mcga_io(writer, obj);
     } else {
         static_assert(std::is_trivially_copyable_v<T>,
                       "Unable to automatically serialize type. Please  "
-                      "add an mcga_write(binary_writer auto& writer) "
-                      "or mcga_io(io_device auto& io) method to this type, "
-                      "or specialize mcga_write(binary_writer auto& writer, T& "
-                      "obj) or mcga_io(io_device auto& io, T& obj) for it.");
+                      "add an mcga_write(binary_writer auto& writer) method to "
+                      "this type, or specialize "
+                      "mcga_write(binary_writer auto& writer, T& obj) for it.");
         static_assert(!std::is_pointer_v<T>,
                       "Unable to automatically serialize raw pointer.");
         obj.~T();
