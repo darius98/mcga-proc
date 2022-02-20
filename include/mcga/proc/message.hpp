@@ -167,11 +167,13 @@ struct Message {
 
     // helper internal classes
     static std::size_t ExpectedContentSizeFromBuffer(const void* buffer) {
-        return *static_cast<const std::size_t*>(buffer);
+        std::size_t size;
+        std::memcpy(&size, buffer, sizeof(std::size_t));
+        return size;
     }
 
     static std::uint8_t* Allocate(std::size_t numBytes) {
-        return new std::uint8_t[numBytes];
+        return (std::uint8_t*)std::malloc(numBytes);
     }
 
     friend class PipeReader;
