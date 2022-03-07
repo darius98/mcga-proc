@@ -9,7 +9,6 @@ class BufferedWriter {
     Writer writer;
     char buffer[BufferSize]{};
     char* cursor = buffer;
-    char* bufferEnd = buffer + BufferSize;
 
   public:
     explicit BufferedWriter(Writer writer): writer(std::move(writer)) {
@@ -21,15 +20,15 @@ class BufferedWriter {
             writer(raw_data, size);
             return;
         }
-        if (cursor + size <= bufferEnd) {
+        const auto remSize = BufferSize - (cursor - buffer);
+        if (size <= remSize) {
             std::memcpy(cursor, raw_data, size);
             cursor += size;
         } else {
-            const auto bufferRemaining = bufferEnd - cursor;
-            std::memcpy(cursor, raw_data, bufferRemaining);
+            std::memcpy(cursor, raw_data, remSize);
             writer(buffer, BufferSize);
-            std::memcpy(buffer, (char*)raw_data + bufferRemaining, size - bufferRemaining);
-            cursor = buffer + size - bufferRemaining;
+            std::memcpy(buffer, (char*)raw_data + remSize, size - remSize);
+            cursor = buffer + size - remSize;
         }
     }
 

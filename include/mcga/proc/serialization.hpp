@@ -11,18 +11,19 @@ concept binary_reader = requires(T& t, void* dst, std::size_t size) {
 
 template<class T>
 void read_into(binary_reader auto&& reader, T& obj) {
-    if constexpr (requires { {obj.mcga_read(reader)}; }) {
-        obj.mcga_read(reader);
-    } else if constexpr (requires { {mcga_read(reader, obj)}; }) {
-        mcga_read(reader, obj);
+    if constexpr (requires { {obj.read_custom(reader)}; }) {
+        obj.read_custom(reader);
+    } else if constexpr (requires { {read_custom(reader, obj)}; }) {
+        read_custom(reader, obj);
     } else {
-        static_assert(std::is_trivially_copyable_v<T>,
-                      "Unable to automatically deserialize type. Please  "
-                      "add an mcga_read(binary_reader auto& reader) or "
-                      "specialize mcga_read(binary_reader auto& reader, T& "
-                      "obj) for it.");
-        static_assert(!std::is_pointer_v<T>,
-                      "Unable to automatically deserialize raw pointer.");
+        static_assert(
+          std::is_trivially_copyable_v<T>,
+          "Unable to automatically deserialize type. Please add a "
+          "read_custom(binary_reader auto& reader) method or a "
+          "read_custom(binary_reader auto& reader, T& obj) overload for it.");
+        static_assert(
+          !std::is_pointer_v<T>,
+          "Unable to automatically deserialize raw pointer, seems like a bug.");
         obj.~T();
         reader(&obj, sizeof(T));
         // TODO: This doesn't feel right (we don't start object lifetime for
@@ -50,22 +51,23 @@ concept binary_writer = requires(T& t, const void* source, std::size_t size) {
 
 template<class T>
 void write_from(binary_writer auto&& writer, const T& obj) {
-    if constexpr (requires { {obj.mcga_write(writer)}; }) {
-        obj.mcga_write(writer);
-    } else if constexpr (requires { {mcga_write(writer, obj)}; }) {
-        mcga_write(writer, obj);
+    if constexpr (requires { {obj.write_custom(writer)}; }) {
+        obj.write_custom(writer);
+    } else if constexpr (requires { {write_custom(writer, obj)}; }) {
+        write_custom(writer, obj);
     } else {
-        static_assert(std::is_trivially_copyable_v<T>,
-                      "Unable to automatically serialize type. Please  "
-                      "add an mcga_write(binary_writer auto& writer) method to "
-                      "this type, or specialize "
-                      "mcga_write(binary_writer auto& writer, T& obj) for it.");
-        static_assert(!std::is_pointer_v<T>,
-                      "Unable to automatically serialize raw pointer.");
+        static_assert(
+          std::is_trivially_copyable_v<T>,
+          "Unable to automatically serialize type. Please add a "
+          "write_custom(binary_writer auto& writer) method to this type, or "
+          "overload write_custom(binary_writer auto& writer, T& obj) for it.");
+        static_assert(
+          !std::is_pointer_v<T>,
+          "Unsafe to automatically serialize raw pointer, seems like a bug.");
         obj.~T();
         writer(&obj, sizeof(T));
-        // TODO: This doesn't feel right (we don't start object lifetime for
-        //  obj after memcpy). Use something like std::launder?}
+        // TODO: This doesn't feel right, we don't start object lifetime for obj
+        //  after memcpy. Use something like std::launder?
     }
 }
 

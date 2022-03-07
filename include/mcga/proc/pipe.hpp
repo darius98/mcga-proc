@@ -32,6 +32,8 @@ class PipeWriter {
 
     virtual ~PipeWriter() = default;
 
+    virtual void sendBytes(const std::uint8_t* bytes, std::size_t numBytes) = 0;
+
     template<class... Args>
     void sendMessage(const Args&... args) {
         auto rawWriter = [this](const void* data, std::size_t size) {
@@ -42,9 +44,6 @@ class PipeWriter {
         Message::Write(bufferedWriter, args...);
         bufferedWriter.flush();
     }
-
-  private:
-    virtual void sendBytes(const std::uint8_t* bytes, std::size_t numBytes) = 0;
 };
 
 std::pair<std::unique_ptr<PipeReader>, std::unique_ptr<PipeWriter>>

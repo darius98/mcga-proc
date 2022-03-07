@@ -11,7 +11,7 @@
 namespace mcga::proc {
 
 template<class T>
-void mcga_read(binary_reader auto& reader, std::optional<T>& obj) {
+void read_custom(binary_reader auto& reader, std::optional<T>& obj) {
     bool hasValue;
     read_into(reader, hasValue);
     if (hasValue) {
@@ -24,7 +24,7 @@ void mcga_read(binary_reader auto& reader, std::optional<T>& obj) {
 }
 
 template<class T>
-void mcga_write(binary_writer auto& writer, const std::optional<T>& obj) {
+void write_custom(binary_writer auto& writer, const std::optional<T>& obj) {
     write_from(writer, obj.has_value());
     if (obj.has_value()) {
         write_from(writer, obj.value());
@@ -32,7 +32,7 @@ void mcga_write(binary_writer auto& writer, const std::optional<T>& obj) {
 }
 
 template<class T>
-void mcga_read(binary_reader auto& reader, std::vector<T>& obj) {
+void read_custom(binary_reader auto& reader, std::vector<T>& obj) {
     typename std::vector<T>::size_type size;
     read_into(reader, size);
     obj.resize(size);
@@ -41,22 +41,22 @@ void mcga_read(binary_reader auto& reader, std::vector<T>& obj) {
     }
 }
 
-void mcga_read(binary_reader auto& reader, std::string& obj) {
-    typename std::string::size_type size;
-    read_into(reader, size);
-    obj.resize(size);
-    reader(obj.data(), obj.size());
-}
-
 template<class T>
-void mcga_write(binary_writer auto& writer, const std::vector<T>& obj) {
+void write_custom(binary_writer auto& writer, const std::vector<T>& obj) {
     write_from(writer, obj.size());
     for (const auto& entry: obj) {
         write_from(writer, entry);
     }
 }
 
-void mcga_write(binary_writer auto& writer, const std::string& obj) {
+void read_custom(binary_reader auto& reader, std::string& obj) {
+    typename std::string::size_type size;
+    read_into(reader, size);
+    obj.resize(size);
+    reader(obj.data(), obj.size());
+}
+
+void write_custom(binary_writer auto& writer, const std::string& obj) {
     write_from(writer, obj.size());
     writer(obj.c_str(), obj.size());
 }
