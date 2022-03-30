@@ -25,10 +25,10 @@ struct Message {
           },
           args...);
         std::uint8_t prefix[prefixSize];
-        std::memset((void*)prefix, 0, prefixSize);
+        std::memset(static_cast<void*>(prefix), 0, prefixSize);
         copy_data(prefix, &numBytes, sizeof(numBytes));
 
-        writer((const void*)prefix, prefixSize);
+        writer(static_cast<const void*>(prefix), prefixSize);
         write_from(
           [&writer](const void* data, std::size_t size) {
               writer(data, size);
@@ -125,7 +125,7 @@ struct Message {
         std::string hex;
         hex.reserve((size - prefixSize) * 4);
         for (std::size_t i = prefixSize; i < size; i++) {
-            hex += std::to_string((int)*at(i));
+            hex += std::to_string(static_cast<int>(*at(i)));
             hex += ' ';
         }
         return hex;
@@ -144,14 +144,15 @@ struct Message {
     }
 
     [[nodiscard]] std::string debugPayloadAsChars() const {
-        return {(char*)payload.get() + prefixSize,
-                (char*)payload.get() + size()};
+        return {reinterpret_cast<char*>(payload.get()) + prefixSize,
+                reinterpret_cast<char*>(payload.get()) + size()};
     }
 
   private:
     template<class In, class Out>
     static void copy_data(Out* out, const In* in, std::size_t size) {
-        std::memcpy((void*)out, (const void*)in, size);
+        std::memcpy(
+          static_cast<void*>(out), static_cast<const void*>(in), size);
     }
 
     explicit Message(uint8_t* payload) noexcept: payload(payload) {
@@ -172,7 +173,7 @@ struct Message {
     }
 
     static std::uint8_t* Allocate(std::size_t numBytes) {
-        return (std::uint8_t*)std::malloc(numBytes);
+        return static_cast<std::uint8_t*>(std::malloc(numBytes));
     }
 
     friend class PipeReader;

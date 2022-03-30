@@ -37,7 +37,7 @@ class PipeWriter {
     template<class... Args>
     void sendMessage(const Args&... args) {
         auto rawWriter = [this](const void* data, std::size_t size) {
-            sendBytes((const std::uint8_t*)data, size);
+            sendBytes(static_cast<const std::uint8_t*>(data), size);
         };
         auto bufferedWriter
           = BufferedWriter<256, decltype(rawWriter)>(std::move(rawWriter));

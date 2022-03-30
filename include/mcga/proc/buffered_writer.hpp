@@ -27,7 +27,9 @@ class BufferedWriter {
         } else {
             std::memcpy(cursor, raw_data, remSize);
             writer(buffer, BufferSize);
-            std::memcpy(buffer, (char*)raw_data + remSize, size - remSize);
+            std::memcpy(buffer,
+                        static_cast<const char*>(raw_data) + remSize,
+                        size - remSize);
             cursor = buffer + size - remSize;
         }
     }
@@ -40,7 +42,7 @@ class BufferedWriter {
     }
 };
 
-template<binary_writer Writer, std::size_t BufferSize=256>
+template<binary_writer Writer, std::size_t BufferSize = 256>
 BufferedWriter(Writer) -> BufferedWriter<BufferSize, Writer>;
 
-}  // namespace mcga::test
+}  // namespace mcga::proc

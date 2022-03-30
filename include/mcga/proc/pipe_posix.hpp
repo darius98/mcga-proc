@@ -189,7 +189,9 @@ inline std::unique_ptr<PipeWriter>
 
     strcpy(static_cast<char*>(server.sun_path), pathname.c_str());
 
-    if (::connect(socketFd, (sockaddr*)(&server), sizeof(sockaddr_un)) != 0) {
+    if (::connect(
+          socketFd, reinterpret_cast<sockaddr*>(&server), sizeof(sockaddr_un))
+        != 0) {
         ::close(socketFd);
         throw std::system_error(
           errno, std::generic_category(), "createLocalClientSocket:connect");
