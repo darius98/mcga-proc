@@ -6,7 +6,6 @@
 #include "mcga/proc/message.hpp"
 #include "mcga/proc/serialization_std.hpp"
 
-using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 

@@ -6,7 +6,6 @@
 
 #include "mcga/proc/subprocess.hpp"
 
-using namespace mcga::test;
 using namespace mcga::proc;
 
 TEST_CASE("Subprocess") {

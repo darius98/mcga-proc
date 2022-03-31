@@ -6,7 +6,6 @@
 
 #include "mcga/proc/worker_subprocess.hpp"
 
-using namespace mcga::test;
 using namespace mcga::proc;
 
 constexpr auto fifty_ms = std::chrono::milliseconds(50);

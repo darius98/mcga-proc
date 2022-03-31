@@ -3,7 +3,6 @@
 
 #include "mcga/proc/pipe.hpp"
 
-using namespace mcga::test;
 using namespace mcga::matchers;
 using namespace mcga::proc;
 
