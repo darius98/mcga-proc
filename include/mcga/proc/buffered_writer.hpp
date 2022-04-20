@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstring>
-
 #include "serialization.hpp"
 
 namespace mcga::proc {
