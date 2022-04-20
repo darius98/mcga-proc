@@ -63,9 +63,14 @@ class PosixPipeReader : public PipeReader {
         ssize_t numBytesRead
           = read(inputFD, static_cast<char*>(block), kBlockReadSize);
         if (numBytesRead < 0) {
-            if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+            if (errno == EAGAIN) {
                 return false;
             }
+#if EWOULDBLOCK != EAGAIN
+            if (errno == EWOULDBLOCK) {
+                return false;
+            }
+#endif
             throw std::system_error(
               errno, std::generic_category(), "PipeReader:readBytes()");
         }
