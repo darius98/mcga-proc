@@ -98,18 +98,30 @@ class PosixSubprocessHandler : public Subprocess {
 
 namespace mcga::proc {
 
-template<class Callable>
-inline std::unique_ptr<Subprocess> Subprocess::Fork(Callable&& callable) {
+inline std::unique_ptr<Subprocess> Subprocess::Fork(auto&& callable) {
     pid_t forkPid = fork();
     if (forkPid < 0) {
         throw std::system_error(
           errno, std::generic_category(), "PosixSubprocessHandler:fork");
     }
     if (forkPid == 0) {  // child process
-        std::forward<Callable>(callable)();
-        exit(0);
+        std::forward<decltype(callable)>(callable)();
+        exit(EXIT_SUCCESS);
     }
     return std::make_unique<internal::PosixSubprocessHandler>(forkPid);
+}
+
+inline std::unique_ptr<Subprocess>
+  Subprocess::Invoke(char* exe, char* const* argv, char* const* envp) {
+    constexpr char* const* base_envp = {nullptr};
+    if (envp == nullptr) {
+        envp = base_envp;
+    }
+    // TODO: Pipe stdout/stderr?
+    return Fork([exe, argv, envp]() {
+        execve(exe, argv, envp);
+        exit(EXIT_FAILURE);
+    });
 }
 
 }  // namespace mcga::proc

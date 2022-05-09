@@ -16,8 +16,10 @@ class Subprocess {
 
     enum KillResult { KILLED, ALREADY_DEAD };
 
-    template<class Callable>
-    static std::unique_ptr<Subprocess> Fork(Callable&& callable);
+    static std::unique_ptr<Subprocess> Fork(auto&& callable);
+
+    static std::unique_ptr<Subprocess>
+      Invoke(char* exe, char* const* argv, char* const* envp = nullptr);
 
     virtual ~Subprocess() = default;
 

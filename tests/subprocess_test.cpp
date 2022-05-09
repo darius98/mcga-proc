@@ -2,6 +2,7 @@
 
 #include <csignal>
 
+#include <array>
 #include <thread>
 
 #include "mcga/proc/subprocess.hpp"
@@ -161,5 +162,27 @@ TEST_CASE("Subprocess") {
         test("getFinishStatus() == NO_EXIT", [&] {
             expect(proc->getFinishStatus() == Subprocess::NO_EXIT);
         });
+    });
+
+    test("Invoke sleep", [&] {
+        std::string sleep = "/bin/sleep";
+        std::string time = "0.1";
+        std::array<char* const, 3> argv{
+          sleep.data(),
+          time.data(),
+          nullptr,
+        };
+        std::array<char* const, 1> envp{
+          nullptr,
+        };
+        std::unique_ptr<Subprocess> proc
+          = Subprocess::Invoke(sleep.data(), argv.data(), envp.data());
+        expect(!proc->isFinished());
+        expect(!proc->isExited());
+        expect(!proc->isSignaled());
+        std::this_thread::sleep_for(std::chrono::milliseconds (150));
+        expect(proc->isFinished());
+        expect(proc->isExited());
+        expect(proc->getReturnCode() == 0);
     });
 }
