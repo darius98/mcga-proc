@@ -79,6 +79,10 @@ class WorkerSubprocess : public Subprocess {
         return subprocess->getFinishStatus();
     }
 
+    void waitBlocking() override {
+        subprocess->waitBlocking();
+    }
+
     Message getNextMessage(int maxConsecutiveFailedReadAttempts = -1) {
         return pipeReader->getNextMessage(maxConsecutiveFailedReadAttempts);
     }

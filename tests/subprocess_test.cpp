@@ -1,6 +1,7 @@
 #include <mcga/test.hpp>
 
 #include <csignal>
+#include <iostream>
 
 #include <array>
 #include <thread>
@@ -10,158 +11,107 @@
 using namespace mcga::proc;
 
 TEST_CASE("Subprocess") {
-    group("Fork into process doing nothing, after 50ms", [] {
-        std::unique_ptr<Subprocess> proc;
-
-        setUp([&proc] {
-            proc = Subprocess::Fork([] {});
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        });
-
-        tearDown([&proc] {
-            proc.reset();
-        });
-
-        test("isFinished() == true", [&] {
-            expect(proc->isFinished());
-        });
-
-        test("isExited() == true", [&] {
-            expect(proc->isExited());
-        });
-
-        test("getReturnCode() == 0", [&] {
-            expect(proc->getReturnCode() == 0);
-        });
-
-        test("isSignaled() == false", [&] {
-            expect(!proc->isSignaled());
-        });
-
-        test("kill() == ALREADY_DEAD", [&] {
-            expect(proc->kill() == Subprocess::ALREADY_DEAD);
-        });
-
-        test("getFinishStatus() == ZERO_EXIT", [&] {
-            expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT);
-        });
+    test("Fork into process doing nothing, after 50ms", [] {
+        auto proc = Subprocess::Fork([] {});
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        expect(proc->isFinished());
+        expect(proc->isExited());
+        expect(proc->getReturnCode() == 0);
+        expect(!proc->isSignaled());
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT);
     });
 
-    group("Fork into process exiting with code 17, after 50ms", [] {
-        std::unique_ptr<Subprocess> proc;
-
-        setUp([&proc] {
-            proc = Subprocess::Fork([] {
-                exit(17);
-            });
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    test("Fork into process exiting with code 17, after 50ms", [] {
+        auto proc = Subprocess::Fork([] {
+            exit(17);
         });
-
-        tearDown([&proc] {
-            proc.reset();
-        });
-
-        test("isFinished() == true", [&] {
-            expect(proc->isFinished());
-        });
-
-        test("isExited() == true", [&] {
-            expect(proc->isExited());
-        });
-
-        test("getReturnCode() == 17", [&] {
-            expect(proc->getReturnCode() == 17);
-        });
-
-        test("isSignaled() == false", [&] {
-            expect(!proc->isSignaled());
-        });
-
-        test("kill() == ALREADY_DEAD", [&] {
-            expect(proc->kill() == Subprocess::ALREADY_DEAD);
-        });
-
-        test("getFinishStatus() == NON_ZERO_EXIT", [&] {
-            expect(proc->getFinishStatus() == Subprocess::NON_ZERO_EXIT);
-        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        expect(proc->isFinished());
+        expect(proc->isExited());
+        expect(proc->getReturnCode() == 17);
+        expect(!proc->isSignaled());
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::NON_ZERO_EXIT);
     });
 
-    group("Fork into KBS SIGINT process, after 50ms", [] {
-        std::unique_ptr<Subprocess> proc;
-
-        setUp([&proc] {
-            proc = Subprocess::Fork([] {
-                raise(SIGINT);
-            });
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    test("Fork into KBS SIGINT process, after 50ms", [&] {
+        auto proc = Subprocess::Fork([] {
+            raise(SIGINT);
         });
-
-        tearDown([&proc] {
-            proc.reset();
-        });
-
-        test("isFinished() == true", [&] {
-            expect(proc->isFinished());
-        });
-
-        test("isExited() == false", [&] {
-            expect(!proc->isExited());
-        });
-
-        test("isSignaled() == true", [&] {
-            expect(proc->isSignaled());
-        });
-
-        test("getSignal() == SIGINT", [&] {
-            expect(proc->getSignal() == SIGINT);
-        });
-
-        test("kill() == ALREADY_DEAD", [&] {
-            expect(proc->kill() == Subprocess::ALREADY_DEAD);
-        });
-
-        test("getFinishStatus() == SIGNAL_EXIT", [&] {
-            expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
-        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        expect(proc->isFinished());
+        expect(!proc->isExited());
+        expect(proc->isSignaled());
+        expect(proc->getSignal() == SIGINT);
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
     });
 
-    group("Fork into infinite spin process, after 50ms", [&] {
-        std::unique_ptr<Subprocess> proc;
-
-        setUp([&proc] {
-            proc = Subprocess::Fork([] {
-                std::atomic_int spins = 0;
-                while (spins >= 0) {
-                    spins += 1;
-                }
-            });
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    test("Fork into KBS SIGINT process, waitBlocking", [&] {
+        auto proc = Subprocess::Fork([] {
+            raise(SIGINT);
         });
+        expect(!proc->isFinished());
+        proc->waitBlocking();
+        expect(proc->isFinished());
+        expect(!proc->isExited());
+        expect(proc->isSignaled());
+        expect(proc->getSignal() == SIGINT);
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
 
-        tearDown([&proc] {
+        proc->waitBlocking();
+        expect(proc->isFinished());
+        expect(!proc->isExited());
+        expect(proc->isSignaled());
+        expect(proc->getSignal() == SIGINT);
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
+    });
+
+    test("Fork into KBS SIGINT process, waitBlocking after waiting 50ms", [&] {
+        auto proc = Subprocess::Fork([] {
+            raise(SIGINT);
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        proc->waitBlocking();
+        expect(proc->isFinished());
+        expect(!proc->isExited());
+        expect(proc->isSignaled());
+        expect(proc->getSignal() == SIGINT);
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
+
+        proc->waitBlocking();
+        expect(proc->isFinished());
+        expect(!proc->isExited());
+        expect(proc->isSignaled());
+        expect(proc->getSignal() == SIGINT);
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->getFinishStatus() == Subprocess::SIGNAL_EXIT);
+    });
+
+    test("Fork into infinite spin process, after 50ms", [&] {
+        auto proc = Subprocess::Fork([] {
+            std::atomic_int spins = 0;
+            while (spins >= 0) {
+                spins += 1;
+            }
+        });
+        cleanup([&] {
+            // TODO: ASan on MacOS says there's an error here somewhere.
+            //  Sometimes proc is nullptr when it gets here, other times
+            //  there's a BUS error when dereferencing Executable::te_call
+            //  from the VTable.
             proc->kill();
-            proc.reset();
         });
-
-        test("isFinished() == false", [&] {
-            expect(!proc->isFinished());
-        });
-
-        test("isExited() == false", [&] {
-            expect(!proc->isExited());
-        });
-
-        test("isSignaled() == false", [&] {
-            expect(!proc->isSignaled());
-        });
-
-        test("kill() == KILLED", [&] {
-            expect(proc->kill() == Subprocess::KILLED);
-        });
-
-        test("getFinishStatus() == NO_EXIT", [&] {
-            expect(proc->getFinishStatus() == Subprocess::NO_EXIT);
-        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        expect(!proc->isFinished());
+        expect(!proc->isExited());
+        expect(!proc->isSignaled());
+        expect(proc->kill() == Subprocess::KILLED);
+        expect(proc->getFinishStatus() == Subprocess::NO_EXIT);
     });
 
     test("Invoke sleep", [&] {
@@ -180,7 +130,7 @@ TEST_CASE("Subprocess") {
         expect(!proc->isFinished());
         expect(!proc->isExited());
         expect(!proc->isSignaled());
-        std::this_thread::sleep_for(std::chrono::milliseconds (150));
+        std::this_thread::sleep_for(std::chrono::milliseconds(150));
         expect(proc->isFinished());
         expect(proc->isExited());
         expect(proc->getReturnCode() == 0);

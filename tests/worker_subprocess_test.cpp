@@ -11,93 +11,52 @@ using namespace mcga::proc;
 constexpr auto fifty_ms = std::chrono::milliseconds(50);
 
 TEST_CASE("Worker subprocess") {
-    group("Send a message, then die", [] {
-        std::unique_ptr<WorkerSubprocess> proc;
-
-        setUp([&] {
-            proc = std::make_unique<WorkerSubprocess>(
-              fifty_ms, [](std::unique_ptr<PipeWriter> writer) {
-                  writer->sendMessage(2, 0, 1, 9);
-              });
-            std::this_thread::sleep_for(fifty_ms);
-        });
-
-        tearDown([&] {
-            proc.reset();
-        });
-
-        test("isFinished() == true", [&] {
-            expect(proc->isFinished());
-        });
-
-        test("kill() == ALREADY_DEAD", [&] {
-            expect(proc->kill() == Subprocess::ALREADY_DEAD);
-        });
-
-        test("isExited() == true", [&] {
-            expect(proc->isExited());
-        });
-
-        test("getReturnCode() == 0", [&] {
-            expect(proc->getReturnCode() == 0);
-        });
-
-        test("isSignaled() == false", [&] {
-            expect(!proc->isSignaled());
-        });
-
-        test("getFinishStatus() == ZERO_EXIT", [&] {
-            expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT);
-        });
-
-        test("getNextMessage(32) is the sent message", [&] {
-            auto message = proc->getNextMessage(32);
-            expect(!message.isInvalid());
-            int a, b, c, d;
-            message >> a >> b >> c >> d;
-            expect(a, 2);
-            expect(b, 0);
-            expect(c, 1);
-            expect(d, 9);
-        });
+    test("Send a message, then die", [] {
+        auto proc = std::make_unique<WorkerSubprocess>(
+          fifty_ms, [](std::unique_ptr<PipeWriter> writer) {
+              writer->sendMessage(2, 0, 1, 9);
+          });
+        std::this_thread::sleep_for(fifty_ms);
+        expect(proc->isFinished());
+        expect(proc->kill() == Subprocess::ALREADY_DEAD);
+        expect(proc->isExited());
+        expect(proc->getReturnCode() == 0);
+        expect(!proc->isSignaled());
+        expect(proc->getFinishStatus() == Subprocess::ZERO_EXIT);
+        auto message = proc->getNextMessage(32);
+        expect(!message.isInvalid());
+        int a, b, c, d;
+        message >> a >> b >> c >> d;
+        expect(a, 2);
+        expect(b, 0);
+        expect(c, 1);
+        expect(d, 9);
     });
 
-    group("Do nothing and die", [] {
-        std::unique_ptr<WorkerSubprocess> proc;
-
-        // TODO: Add cleanup() functionality to mcga::test. This shouldn't be a
-        //  group!
-        tearDown([&] {
-            proc.reset();
+    test("Do nothing and die: getNextMessage(32) is invalid", [&] {
+        auto proc = std::make_unique<WorkerSubprocess>(
+          fifty_ms, [](std::unique_ptr<PipeWriter>) {});
+        cleanup([&] {
+            proc->kill();
         });
-
-        test("getNextMessage(32) is invalid", [&] {
-            proc = std::make_unique<WorkerSubprocess>(
-              fifty_ms, [](std::unique_ptr<PipeWriter>) {});
-            std::this_thread::sleep_for(fifty_ms);
-            expect(proc->getNextMessage(32).isInvalid());
-        });
+        std::this_thread::sleep_for(fifty_ms);
+        expect(proc->getNextMessage(32).isInvalid());
     });
 
-    group("Timeout", [] {
-        std::unique_ptr<WorkerSubprocess> proc;
-
-        tearDown([&] {
-            proc.reset();
+    test("Timeout: getFinishStatus()==TIMEOUT", [&] {
+        auto proc = std::make_unique<WorkerSubprocess>(
+          fifty_ms, [](std::unique_ptr<PipeWriter>) {
+              auto endTime
+                = std::chrono::high_resolution_clock::now() + 4 * fifty_ms;
+              std::atomic_int spins = 0;
+              while (std::chrono::high_resolution_clock::now() <= endTime) {
+                  spins += 1;
+              }
+          });
+        cleanup([&] {
+            proc->kill();
         });
-
-        test("getFinishStatus()==TIMEOUT", [&] {
-            proc = std::make_unique<WorkerSubprocess>(
-              fifty_ms, [](std::unique_ptr<PipeWriter>) {
-                  auto endTime
-                    = std::chrono::high_resolution_clock::now() + 4 * fifty_ms;
-                  std::atomic_int spins = 0;
-                  while (std::chrono::high_resolution_clock::now() <= endTime) {
-                      spins += 1;
-                  }
-              });
-            std::this_thread::sleep_for(2 * fifty_ms);
-            expect(proc->getFinishStatus(), Subprocess::TIMEOUT);
-        });
+        std::this_thread::sleep_for(2 * fifty_ms);
+        expect(proc->getFinishStatus(), Subprocess::TIMEOUT);
     });
 }

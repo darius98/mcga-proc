@@ -36,6 +36,8 @@ class Subprocess {
     virtual KillResult kill() = 0;
 
     virtual FinishStatus getFinishStatus() = 0;
+
+    virtual void waitBlocking() = 0;
 };
 
 }  // namespace mcga::proc

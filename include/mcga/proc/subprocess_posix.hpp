@@ -87,6 +87,20 @@ class PosixSubprocessHandler : public Subprocess {
         return ZERO_EXIT;
     }
 
+    void waitBlocking() override {
+        if (killed || finished) {
+            return;
+        }
+        int wStatus;
+        int ret = waitpid(pid, &wStatus, 0);
+        if (ret < 0) {
+            throw std::system_error(
+              errno, std::generic_category(), "PosixSubprocessHandler:waitpid");
+        }
+        finished = true;
+        lastWaitStatus = wStatus;
+    }
+
   private:
     pid_t pid;
     bool killed = false;
