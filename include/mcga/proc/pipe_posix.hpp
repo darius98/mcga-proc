@@ -81,7 +81,7 @@ class PosixPipeReader : public PipeReader {
         memcpy(buffer + bufferSize,
                static_cast<char*>(block),
                static_cast<std::size_t>(numBytesRead));
-        bufferSize += numBytesRead;
+        bufferSize += static_cast<std::size_t>(numBytesRead);
         return true;
     }
 
@@ -137,7 +137,7 @@ class PosixPipeWriter : public PipeWriter {
                 throw std::system_error(
                   errno, std::generic_category(), "PipeWriter:sendBytes");
             }
-            written += currentWriteBlockSize;
+            written += static_cast<std::size_t>(currentWriteBlockSize);
         }
     }
 
