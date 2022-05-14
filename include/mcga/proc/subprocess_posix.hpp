@@ -12,6 +12,8 @@
 #include <memory>
 #include <system_error>
 
+extern char **environ;
+
 namespace mcga::proc::internal {
 
 class PosixSubprocessHandler : public Subprocess {
@@ -127,9 +129,8 @@ inline std::unique_ptr<Subprocess> Subprocess::Fork(auto&& callable) {
 
 inline std::unique_ptr<Subprocess>
   Subprocess::Invoke(char* exe, char* const* argv, char* const* envp) {
-    constexpr char* const* base_envp = {nullptr};
     if (envp == nullptr) {
-        envp = base_envp;
+        envp = environ;
     }
     // TODO: Pipe stdout/stderr?
     return Fork([exe, argv, envp]() {
