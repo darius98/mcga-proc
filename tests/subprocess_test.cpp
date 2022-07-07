@@ -98,13 +98,10 @@ TEST_CASE("Subprocess") {
             while (spins >= 0) {
                 spins += 1;
             }
-        });
+        }).release();
         cleanup([&] {
-            // TODO: ASan on MacOS says there's an error here somewhere.
-            //  Sometimes proc is nullptr when it gets here, other times
-            //  there's a BUS error when dereferencing Executable::te_call
-            //  from the VTable.
             proc->kill();
+            delete proc;
         });
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         expect(!proc->isFinished());
